@@ -1,0 +1,59 @@
+
+name: NILUBRAIN CI-CD
+
+on:
+  push:
+    branches:
+      - master
+
+  pull_request:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build NILUBRAIN
+    runs-on: windows-latest
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout GitHub Code
+        uses: actions/checkout@v4
+
+      # 2. Setup .NET SDK
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 3. Restore API dependencies
+      - name: Restore API
+        run: dotnet restore NILUBRAIN.API/NILUBRAIN.API.csproj
+
+      # 4. Build API
+      - name: Build API
+        run: dotnet build NILUBRAIN.API/NILUBRAIN.API.csproj --configuration Release --no-restore
+
+      # 5. Restore WPF dependencies
+      - name: Restore WPF
+        run: dotnet restore NILUBRAIN.WPF/NILUBRAIN.WPF.csproj
+
+      # 6. Build WPF
+      - name: Build WPF
+        run: dotnet build NILUBRAIN.WPF/NILUBRAIN.WPF.csproj --configuration Release --no-restore
+
+      # 7. Upload API build output
+      - name: Upload API Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: NILUBRAIN-API-Build
+          path: NILUBRAIN.API/bin/Release/
+
+      # 8. Upload WPF build output
+      - name: Upload WPF Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: NILUBRAIN-WPF-Build
+          path: NILUBRAIN.WPF/bin/Release/
