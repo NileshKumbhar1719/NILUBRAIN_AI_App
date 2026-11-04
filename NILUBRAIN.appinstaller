@@ -1,0 +1,25 @@
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<AppInstaller
+    xmlns="http://schemas.microsoft.com/appx/appinstaller/2021"
+    Version="1.0.0.0"
+    Uri="https://download.yourdomain.com/NILUBRAIN.appinstaller">
+
+    <MainPackage
+        Name="YOUR_PACKAGE_NAME"
+        Publisher="YOUR_PUBLISHER"
+        Version="1.0.0.0"
+        ProcessorArchitecture="x64"
+        Uri="https://download.yourdomain.com/NILUBRAIN.msix" />
+
+    <UpdateSettings>
+        <OnLaunch
+            HoursBetweenUpdateChecks="0"
+            ShowPrompt="true"
+            UpdateBlocksActivation="false" />
+
+        <AutomaticBackgroundTask />
+    </UpdateSettings>
+
+</AppInstaller>

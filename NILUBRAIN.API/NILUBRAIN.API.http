@@ -1,0 +1,6 @@
+@NILUBRAIN.API_HostAddress = http://localhost:5072
+
+GET {{NILUBRAIN.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

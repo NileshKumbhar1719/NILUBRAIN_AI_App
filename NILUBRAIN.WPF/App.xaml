@@ -1,0 +1,23 @@
+﻿<Application x:Class="NILUBRAIN.WPF.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
+              
+
+    <Application.Resources>
+
+        <!-- Primary Theme Color -->
+        <SolidColorBrush x:Key="PrimaryColor"
+                         Color="#462AD8"/>
+
+        <!-- Accent Color -->
+        <SolidColorBrush x:Key="AccentColor"
+                         Color="#28AEED"/>
+
+        <!-- Background Color -->
+        <SolidColorBrush x:Key="BackgroundColor"
+                         Color="#060531"/>
+
+    </Application.Resources>
+
+</Application>

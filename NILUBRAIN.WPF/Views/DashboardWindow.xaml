@@ -1,0 +1,444 @@
+﻿<Window x:Class="NILUBRAIN.WPF.Views.DashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NILUBRAIN AI Enterprise Workspace"
+        Height="620"
+        Width="960"
+        MinHeight="550"
+        MinWidth="850"
+        WindowState="Normal"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Window.Resources>
+        <!-- Color Palette -->
+        <SolidColorBrush x:Key="BgDark" Color="#0B031E"/>
+        <SolidColorBrush x:Key="SidebarBg" Color="#120630"/>
+        <SolidColorBrush x:Key="CardBg" Color="#190A42"/>
+        <SolidColorBrush x:Key="AccentPurple" Color="#784DFD"/>
+        <SolidColorBrush x:Key="AccentPink" Color="#FB539B"/>
+        <SolidColorBrush x:Key="AccentCyan" Color="#4ADAEC"/>
+        <SolidColorBrush x:Key="AccentGreen" Color="#07F3C0"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextMuted" Color="#9497CD"/>
+        <SolidColorBrush x:Key="BorderGlow" Color="#371E7A"/>
+
+        <!-- Drop Shadow Effect for Realistic Depth -->
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="24" ShadowDepth="6" Color="#000000" Opacity="0.45"/>
+        <DropShadowEffect x:Key="GlowShadow" BlurRadius="18" ShadowDepth="0" Color="#784DFD" Opacity="0.25"/>
+
+        <!-- Custom Navigation Menu Button Style -->
+        <Style x:Key="MenuButton" TargetType="Button">
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Margin" Value="10,2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#A5A0D0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="15,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="B" Property="Background" Value="#2A1466"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary Gradient Action Button Style -->
+        <Style x:Key="PrimaryGradientButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="BtnBorder" CornerRadius="10">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#784DFD" Offset="0"/>
+                                    <GradientStop Color="#FB539B" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Opacity" Value="0.92"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Danger / Logout Button Style -->
+        <Style x:Key="LogoutButton" TargetType="Button">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Margin" Value="10,4"/>
+            <Setter Property="Background" Value="#2E0D22"/>
+            <Setter Property="Foreground" Value="#FB539B"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#6B1D50"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="LB" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="LB" Property="Background" Value="#4A1237"/>
+                                <Setter Property="Foreground" Value="#FF80BC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Glassmorphism Card Style with Shadow -->
+        <Style x:Key="DashboardCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBg}"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderGlow}"/>
+            <Setter Property="Effect" Value="{StaticResource CardShadow}"/>
+        </Style>
+    </Window.Resources>
+
+    <!-- Outer Window Frame with Glow -->
+    <Border x:Name="MainBorder" CornerRadius="16" Background="{StaticResource BgDark}" BorderBrush="#4A23A4" BorderThickness="1.5">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="SidebarColumn" Width="270"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ================= SIDEBAR NAVIGATION ================= -->
+            <Border x:Name="SidebarBorder" Grid.Column="0" Background="{StaticResource SidebarBg}" CornerRadius="15,0,0,15" BorderBrush="#240F5C" BorderThickness="0,0,1,0">
+                <DockPanel LastChildFill="True">
+
+                    <!-- BRAND HEADER -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="80" Margin="18,10,18,10">
+                        <!-- लोगोसाठी Border -->
+                        <Border Width="46" Height="46" CornerRadius="12" VerticalAlignment="Center" Background="#1A0E42">
+                            <Image Width="32" Height="32" Stretch="Uniform">
+                                <Image.Source>
+                                    <BitmapImage UriSource="pack://application:,,,/Images/pg.png"/>
+                                </Image.Source>
+                            </Image>
+                        </Border>
+
+                        <StackPanel x:Name="BrandTextPanel" VerticalAlignment="Center" Margin="12,0,0,0">
+                            <TextBlock Text="NILUBRAIN AI" FontSize="17" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="ENTERPRISE SUITE v1.1" FontSize="9" Foreground="{StaticResource TextMuted}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- USER PROFILE & LOGOUT FOOTER -->
+                    <StackPanel DockPanel.Dock="Bottom" Margin="12,5,12,15">
+                        <Border Background="#1C0A4B" CornerRadius="12" Padding="10" Margin="0,0,0,8" BorderBrush="#361778" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="38"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="36" Height="36" CornerRadius="18">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#FB539B" Offset="0"/>
+                                            <GradientStop Color="#784DFD" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="N" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                                    <TextBlock Text="Nilesh Developer" Foreground="White" FontWeight="Bold" FontSize="11"/>
+                                    <TextBlock Text="PRO Unlimited" Foreground="{StaticResource AccentGreen}" FontSize="9"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- SIDEBAR LOGOUT BUTTON -->
+                        <Button Content="⎋  Logout Session" Style="{StaticResource LogoutButton}" Click="Logout_Click"/>
+                        <TextBlock Text="● Engine Active • v1.1.0" Foreground="#6C6DAE" FontSize="9" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                    </StackPanel>
+
+                    <!-- NAVIGATION SCROLL MENU -->
+                    <ScrollViewer VerticalScrollBarVisibility="Hidden">
+                        <StackPanel Margin="0,10">
+                            <TextBlock Text="OVERVIEW" Foreground="#6C6DAE" FontSize="10" FontWeight="Bold" Margin="22,10,0,6"/>
+                            <Button Content="▦   Dashboard" Style="{StaticResource MenuButton}" Click="Dashboard_Click"/>
+
+                            <TextBlock Text="AI AUTOPILOT" Foreground="#6C6DAE" FontSize="10" FontWeight="Bold" Margin="22,16,0,6"/>
+                            <Button Content="🚀   Naukri Autopilot" Style="{StaticResource MenuButton}" Tag="Naukri Autopilot" Click="NavFeature_Click"/>
+                            <Button Content="⚡   LinkedIn Booster" Style="{StaticResource MenuButton}" Tag="LinkedIn Booster" Click="NavFeature_Click"/>
+
+                            <TextBlock Text="AI CAREER TOOLS" Foreground="#6C6DAE" FontSize="10" FontWeight="Bold" Margin="22,16,0,6"/>
+                            <Button Content="✦   Interview Assistant" Style="{StaticResource MenuButton}" Tag="AI Interview Assistant" Click="NavFeature_Click"/>
+                            <Button Content="▤   Resume ATS Score" Style="{StaticResource MenuButton}" Tag="Resume ATS Score" Click="NavFeature_Click"/>
+                            <Button Content="✎   Resume Builder" Style="{StaticResource MenuButton}" Tag="Resume Builder" Click="NavFeature_Click"/>
+                            <Button Content="⌕   Job Description Matcher" Style="{StaticResource MenuButton}" Tag="JD Resume Matcher" Click="NavFeature_Click"/>
+                            <Button Content="💻   Coding Assistant" Style="{StaticResource MenuButton}" Tag="Coding Assistant" Click="NavFeature_Click"/>
+                            <Button Content="📋   Screening Questions" Style="{StaticResource MenuButton}" Tag="Screening Questions" Click="NavFeature_Click"/>
+                            <Button Content="📂   Context Upload" Style="{StaticResource MenuButton}" Tag="Context Upload" Click="NavFeature_Click"/>
+
+                            <TextBlock Text="ACCOUNT &amp; WALLET" Foreground="#6C6DAE" FontSize="10" FontWeight="Bold" Margin="22,16,0,6"/>
+                            <Button Content="💰   Usage &amp; Wallet" Style="{StaticResource MenuButton}" Tag="Usage &amp; Wallet" Click="NavFeature_Click"/>
+                            <Button Content="👥   Referral &amp; Earnings" Style="{StaticResource MenuButton}" Tag="Referral &amp; Earnings" Click="NavFeature_Click"/>
+                            <Button Content="⚙   Settings &amp; Security" Style="{StaticResource MenuButton}" Click="Settings_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- ================= MAIN WORKSPACE AREA ================= -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="38"/>
+                    <RowDefinition Height="65"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- TOP DRAGGABLE CONTROL BAR -->
+                <Grid Grid.Row="0" Background="#080217" MouseLeftButtonDown="ControlBar_MouseDown">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- SIDEBAR TOGGLE HAMBURGER BUTTON -->
+                        <Button x:Name="ToggleSidebarBtn" Content="☰" Width="38" Height="30" Background="Transparent" Foreground="#9497CD" BorderThickness="0" Click="ToggleSidebar_Click" Cursor="Hand" Margin="8,0,0,0" ToolTip="Toggle Navigation Menu"/>
+                        <TextBlock Text="NILUBRAIN AI — Enterprise Autopilot Workspace" Foreground="#554B7C" FontSize="11" VerticalAlignment="Center" Margin="10,0"/>
+                    </StackPanel>
+
+                    <!-- WINDOW CONTROLS -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="—" Width="40" Height="38" Background="Transparent" Foreground="#9497CD" BorderThickness="0" Click="Minimize_Click" Cursor="Hand"/>
+                        <Button Content="🗖" Width="40" Height="38" Background="Transparent" Foreground="#9497CD" BorderThickness="0" Click="Maximize_Click" Cursor="Hand" ToolTip="Zoom / Fit Screen"/>
+                        <Button Content="✕" Width="40" Height="38" Background="Transparent" Foreground="#FB539B" BorderThickness="0" Click="Close_Click" Cursor="Hand"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- HEADER BAR -->
+                <Border Grid.Row="1" Background="{StaticResource BgDark}" BorderBrush="#1C0A4B" BorderThickness="0,0,0,1">
+                    <Grid Margin="25,0">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock x:Name="PageSubtitle" Text="Real-time analytics and AI autopilot status" FontSize="11" Foreground="{StaticResource TextMuted}"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Border Background="#1A0E42" CornerRadius="20" Padding="12,6" Margin="0,0,12,0" BorderBrush="#311776" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⚡ AI Credits: " Foreground="{StaticResource TextMuted}" FontSize="12"/>
+                                    <TextBlock Text="9,450" Foreground="{StaticResource AccentCyan}" FontWeight="Bold" FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#0C2B23" CornerRadius="12" Padding="10,5">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Fill="{StaticResource AccentGreen}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Autopilot Active" Foreground="{StaticResource AccentGreen}" FontSize="11" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- DYNAMIC CONTENT CONTAINERS -->
+                <Grid Grid.Row="2" Margin="20">
+
+                    <!-- 1. MAIN DASHBOARD PANEL -->
+                    <ScrollViewer x:Name="DashboardPanel" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- TOP METRICS CARDS GRID (ZOOMABLE / CLICKABLE) -->
+                            <UniformGrid Columns="4">
+                                <Border Style="{StaticResource DashboardCard}" MouseLeftButtonDown="MetricCard_Click" Tag="Job Match Rate: 96.4% optimized across top enterprise tech roles." Cursor="Hand">
+                                    <StackPanel>
+                                        <TextBlock Text="Job Match Rate 🔍" Foreground="{StaticResource TextMuted}" FontSize="12"/>
+                                        <TextBlock Text="96.4%" Foreground="{StaticResource AccentGreen}" FontSize="26" FontWeight="Bold" Margin="0,6,0,2"/>
+                                        <TextBlock Text="↑ +4.2% optimized (Click to Zoom)" Foreground="#07F3C0" FontSize="10"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource DashboardCard}" MouseLeftButtonDown="MetricCard_Click" Tag="ATS Resume Score: 92/100. Top 3% applicant compatibility index." Cursor="Hand">
+                                    <StackPanel>
+                                        <TextBlock Text="ATS Resume Score 🔍" Foreground="{StaticResource TextMuted}" FontSize="12"/>
+                                        <TextBlock Text="92/100" Foreground="{StaticResource AccentCyan}" FontSize="26" FontWeight="Bold" Margin="0,6,0,2"/>
+                                        <TextBlock Text="Top 3% Applicants (Click to Zoom)" Foreground="{StaticResource AccentCyan}" FontSize="10"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource DashboardCard}" MouseLeftButtonDown="MetricCard_Click" Tag="Auto Applications: 142 successfully queued and submitted via Autopilot." Cursor="Hand">
+                                    <StackPanel>
+                                        <TextBlock Text="Auto Applications 🔍" Foreground="{StaticResource TextMuted}" FontSize="12"/>
+                                        <TextBlock Text="142" Foreground="{StaticResource AccentPink}" FontSize="26" FontWeight="Bold" Margin="0,6,0,2"/>
+                                        <TextBlock Text="28 this week (Click to Zoom)" Foreground="{StaticResource AccentPink}" FontSize="10"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource DashboardCard}" MouseLeftButtonDown="MetricCard_Click" Tag="AI Credits: 9,450 remaining under your PRO Unlimited subscription." Cursor="Hand">
+                                    <StackPanel>
+                                        <TextBlock Text="AI Credits 🔍" Foreground="{StaticResource TextMuted}" FontSize="12"/>
+                                        <TextBlock Text="9,450" Foreground="{StaticResource AccentPurple}" FontSize="26" FontWeight="Bold" Margin="0,6,0,2"/>
+                                        <TextBlock Text="Unlimited Access (Click to Zoom)" Foreground="{StaticResource AccentPurple}" FontSize="10"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+
+                            <!-- MIDDLE PROGRESS & QUICK ACTIONS -->
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.7*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- REDESIGNED "AI PREPARATION & MATCH INDEX" UI -->
+                                <Border Grid.Column="0" Style="{StaticResource DashboardCard}" MinHeight="260">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,15">
+                                            <StackPanel HorizontalAlignment="Left">
+                                                <TextBlock Text="AI Preparation &amp; Match Index" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                                                <TextBlock Text="Real-time profile optimization telemetry" Foreground="{StaticResource TextMuted}" FontSize="11" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <Border Background="#251259" CornerRadius="12" Padding="10,4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                <TextBlock Text="⚡ 91% Overall Ready" Foreground="{StaticResource AccentGreen}" FontSize="11" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Metric Item 1: Resume Optimization -->
+                                        <StackPanel Margin="0,6">
+                                            <Grid Margin="0,0,0,6">
+                                                <TextBlock Text="Resume Optimization Level" Foreground="#C0C2ED" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Text="88%" Foreground="{StaticResource AccentGreen}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                            <ProgressBar Value="88" Height="8" Foreground="{StaticResource AccentGreen}" Background="#200E4A" BorderThickness="0"/>
+                                        </StackPanel>
+
+                                        <!-- Metric Item 2: Interview Readiness -->
+                                        <StackPanel Margin="0,12,0,6">
+                                            <Grid Margin="0,0,0,6">
+                                                <TextBlock Text="AI Mock Interview Readiness" Foreground="#C0C2ED" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Text="94%" Foreground="{StaticResource AccentPurple}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                            <ProgressBar Value="94" Height="8" Foreground="{StaticResource AccentPurple}" Background="#200E4A" BorderThickness="0"/>
+                                        </StackPanel>
+
+                                        <!-- Metric Item 3: Keyword Density -->
+                                        <StackPanel Margin="0,12,0,0">
+                                            <Grid Margin="0,0,0,6">
+                                                <TextBlock Text="Skill Keyword Density &amp; ATS Fit" Foreground="#C0C2ED" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Text="91%" Foreground="{StaticResource AccentPink}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                            <ProgressBar Value="91" Height="8" Foreground="{StaticResource AccentPink}" Background="#200E4A" BorderThickness="0"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- QUICK ACTIONS -->
+                                <Border Grid.Column="1" Style="{StaticResource DashboardCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Quick Actions" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+                                        <Button Content="🚀  Run Naukri Autopilot" Style="{StaticResource PrimaryGradientButton}" Tag="Naukri Autopilot" Click="NavFeature_Click"/>
+                                        <Button Content="✦  AI Mock Interview" Style="{StaticResource MenuButton}" Background="#251259" Foreground="White" Margin="0,4" Tag="AI Interview Assistant" Click="NavFeature_Click"/>
+                                        <Button Content="▤  Scan ATS Score" Style="{StaticResource MenuButton}" Background="#251259" Foreground="White" Margin="0,4" Tag="Resume ATS Score" Click="NavFeature_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- RECENT AI ACTIVITY STREAM -->
+                            <Border Style="{StaticResource DashboardCard}" Margin="8,12,8,8">
+                                <StackPanel>
+                                    <TextBlock Text="⚡ Live AI Activity Stream" Foreground="White" FontSize="15" FontWeight="Bold" Margin="0,0,0,10"/>
+                                    <StackPanel Margin="0,4">
+                                        <TextBlock Text="• [10:24 AM] Naukri Autopilot applied to Senior Full Stack Engineer @ Google" Foreground="#B0B3E3" FontSize="12" Margin="0,3"/>
+                                        <TextBlock Text="• [09:15 AM] Resume ATS Score updated: Keyword match improved to 92%" Foreground="#B0B3E3" FontSize="12" Margin="0,3"/>
+                                        <TextBlock Text="• [Yesterday] Screening QA Bot generated 14 custom answers for incoming recruiter mails" Foreground="#B0B3E3" FontSize="12" Margin="0,3"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- 2. DYNAMIC FEATURE PANEL -->
+                    <ScrollViewer x:Name="FeaturePanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <Border Style="{StaticResource DashboardCard}" Padding="30">
+                            <StackPanel>
+                                <TextBlock Text="✦ NILUBRAIN INTELLIGENT MODULE" Foreground="{StaticResource AccentGreen}" FontWeight="Bold" FontSize="11"/>
+                                <TextBlock x:Name="FeatureTitle" Text="Feature Module" Foreground="White" FontSize="26" FontWeight="Bold" Margin="0,10,0,6"/>
+                                <TextBlock x:Name="FeatureDescription" Text="Module details and AI interaction space." Foreground="{StaticResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,25"/>
+
+                                <Border Background="#11052C" CornerRadius="12" Padding="20" BorderBrush="#321775" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock x:Name="FeatureInstruction" Text="INPUT CONTEXT / PARAMETERS" Foreground="{StaticResource AccentCyan}" FontWeight="Bold" FontSize="11" Margin="0,0,0,10"/>
+                                        <TextBox x:Name="FeatureInput" Height="120" Background="#0A021C" Foreground="White" BorderBrush="#5028B8" BorderThickness="1" Padding="12" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontSize="13"/>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                                            <Button x:Name="FeatureActionButton" Content="⚡ Execute AI Command" Style="{StaticResource PrimaryGradientButton}" MinWidth="180" Click="FeatureAction_Click"/>
+                                        </StackPanel>
+
+                                        <TextBlock x:Name="FeatureResult" Foreground="{StaticResource AccentGreen}" FontSize="13" TextWrapping="Wrap" Margin="0,20,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </ScrollViewer>
+
+                    <!-- 3. SETTINGS & SECURITY PANEL (WITH FUTURE LOGOUT / PREFERENCE CONFIGURATIONS) -->
+                    <ScrollViewer x:Name="SettingsPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <Border Style="{StaticResource DashboardCard}" Padding="30">
+                            <StackPanel>
+                                <TextBlock Text="System Settings &amp; Security" Foreground="White" FontSize="24" FontWeight="Bold" Margin="0,0,0,6"/>
+                                <TextBlock Text="API Key Configurations, Autopilot Frequencies, and Session Controls." Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,0,0,25"/>
+
+                                <!-- SYSTEM STATUS BOX -->
+                                <Border Background="#11052C" CornerRadius="12" Padding="20" BorderBrush="#321775" BorderThickness="1" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="NILUBRAIN Engine v1.1.0 • Connected &amp; Synced" Foreground="{StaticResource AccentGreen}" FontSize="13" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Status: All local Ollama LLM and cloud automation pipelines are fully operational." Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- FUTURE SETTINGS PLACEHOLDER BOX -->
+                                <Border Background="#150736" CornerRadius="12" Padding="20" BorderBrush="#321775" BorderThickness="1" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="Autopilot Automation Preferences (Coming Soon)" Foreground="{StaticResource AccentCyan}" FontSize="14" FontWeight="Bold" Margin="0,0,0,6"/>
+                                        <TextBlock Text="Configure cron schedules, target job portals, and automated retry policies for daily submissions." Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,0,0,12"/>
+                                        <TextBox Height="40" Background="#0A021C" Foreground="White" BorderBrush="#5028B8" BorderThickness="1" Padding="10" Text="Daily Application Limit: 50 Jobs | Target: Remote .NET Developer Roles" IsReadOnly="True" FontSize="12"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- SESSION LOGOUT MANAGEMENT BOX -->
+                                <Border Background="#21081B" CornerRadius="12" Padding="20" BorderBrush="#6B1D50" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="Session Management &amp; Security" Foreground="#FB539B" FontSize="14" FontWeight="Bold" Margin="0,0,0,6"/>
+                                        <TextBlock Text="Safely terminate your active developer session, clear local workspace cache, and lock the dashboard." Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,0,0,15"/>
+                                        <Button Content="⎋  Logout &amp; Lock Workspace" Style="{StaticResource LogoutButton}" HorizontalAlignment="Left" MinWidth="210" Click="Logout_Click"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </ScrollViewer>
+
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
