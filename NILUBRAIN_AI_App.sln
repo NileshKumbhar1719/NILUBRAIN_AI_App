@@ -15,8 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Package", "Package", "{C39A
 	ProjectSection(SolutionItems) = preProject
 		NILUBRAIN.appinstaller = NILUBRAIN.appinstaller
 		NILUBRAIN.msix = NILUBRAIN.msix
-		NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.14.0_x64_Test\NILUBRAIN.Package_1.0.14.0_x64.appx = NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.14.0_x64_Test\NILUBRAIN.Package_1.0.14.0_x64.appx
-		NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.14.0_x64_Test\NILUBRAIN.Package_1.0.14.0_x64.cer = NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.14.0_x64_Test\NILUBRAIN.Package_1.0.14.0_x64.cer
+		NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.20.0_x64_Test\NILUBRAIN.Package_1.0.20.0_x64.appx = NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.20.0_x64_Test\NILUBRAIN.Package_1.0.20.0_x64.appx
+		NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.20.0_x64_Test\NILUBRAIN.Package_1.0.20.0_x64.cer = NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.20.0_x64_Test\NILUBRAIN.Package_1.0.20.0_x64.cer
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{3E045E13-B22C-4481-9435-E01DAC19F0A6}"
