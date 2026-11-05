@@ -9,7 +9,7 @@
 	<Identity
         Name="c6aa655c-79e0-49ed-9d91-2b3dafc07853"
         Publisher="CN=NILUBRAIN AI"
-        Version="1.0.19.0" />
+        Version="1.0.22.0" />
 
 	<Properties>
 		<DisplayName>NILUBRAIN AI</DisplayName>
@@ -25,7 +25,7 @@
 	</Dependencies>
 
 	<Resources>
-		<Resource Language="x-generate" />
+		<Resource Language="en-US" />
 	</Resources>
 
 	<Applications>
