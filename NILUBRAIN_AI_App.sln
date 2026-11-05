@@ -19,6 +19,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Package", "Package", "{C39A
 		NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.14.0_x64_Test\NILUBRAIN.Package_1.0.14.0_x64.cer = NILUBRAIN.Package\AppPackages\NILUBRAIN.Package_1.0.14.0_x64_Test\NILUBRAIN.Package_1.0.14.0_x64.cer
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{3E045E13-B22C-4481-9435-E01DAC19F0A6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{E95BD2B9-C121-4BAD-B11E-D8AC2E84C8D1}"
+	ProjectSection(SolutionItems) = preProject
+		cicd.yml = cicd.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -109,6 +116,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C39A7318-6D8D-495E-91B7-49FEFED0E673} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{E95BD2B9-C121-4BAD-B11E-D8AC2E84C8D1} = {3E045E13-B22C-4481-9435-E01DAC19F0A6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E7BA4FA2-3DF8-41BA-8687-6C53D44E56A3}
