@@ -1,25 +1,34 @@
+﻿
+$root = "C:\Users\NILESH\OneDrive\Desktop\NILUBRAIN_AI_App"
 
+$xmlText = @'
 <?xml version="1.0" encoding="utf-8"?>
-
-<AppInstaller
-    xmlns="http://schemas.microsoft.com/appx/appinstaller/2021"
-    Version="1.0.24.0"
-    Uri="https://github.com/NileshKumbhar1719/NILUBRAIN_AI_App/releases/download/v1.0.24.0/NILUBRAIN.appinstaller">
-
+<AppInstaller xmlns="http://schemas.microsoft.com/appx/appinstaller/2021"
+              Version="1.0.24.4"
+              Uri="https://github.com/NileshKumbhar1719/NILUBRAIN_AI_App/releases/download/v1.0.24.4/NILUBRAIN.appinstaller">
     <MainPackage
         Name="c6aa655c-79e0-49ed-9d91-2b3dafc07853"
         Publisher="CN=NILUBRAIN AI"
-        Version="1.0.24.0"
+        Version="1.0.24.4"
         ProcessorArchitecture="x64"
-        Uri="https://github.com/NileshKumbhar1719/NILUBRAIN_AI_App/releases/download/v1.0.24.0/NILUBRAIN.Package_1.0.24.0_x64.msix" />
-
+        Uri="https://github.com/NileshKumbhar1719/NILUBRAIN_AI_App/releases/download/v1.0.24.4/NILUBRAIN.Package_1.0.24.4_x64.msix" />
     <UpdateSettings>
-        <OnLaunch
-            HoursBetweenUpdateChecks="12"
-            ShowPrompt="true"
-            UpdateBlocksActivation="false" />
-
+        <OnLaunch HoursBetweenUpdateChecks="12"
+                 ShowPrompt="true"
+                 UpdateBlocksActivation="false" />
         <AutomaticBackgroundTask />
     </UpdateSettings>
-
 </AppInstaller>
+'@
+
+$xmlText = $xmlText.TrimStart()
+
+$encoding = New-Object System.Text.UTF8Encoding($false)
+
+[System.IO.File]::WriteAllText(
+    "$root\NILUBRAIN.appinstaller",
+    $xmlText,
+    $encoding
+)
+
+Write-Host "NEW APPINSTALLER CREATED" -ForegroundColor Green
