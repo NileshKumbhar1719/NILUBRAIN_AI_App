@@ -558,16 +558,13 @@ jobs:
           Write-Host "===================================="
 
 
-      # ==========================================
       # 12. PUBLISH GITHUB RELEASE
-      # ==========================================
 
       - name: Publish GitHub Release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
 
         with:
-
           tag_name: v${{ steps.version.outputs.version }}
 
           name: NILUBRAIN AI v${{ steps.version.outputs.version }}
@@ -584,46 +581,18 @@ jobs:
             New automated Windows desktop release.
 
             ## Installation
-
             Download NILUBRAIN.appinstaller and open it using Windows App Installer.
 
             ## Platform
-
             Windows x64
 
             Package format: MSIX
 
             ## Automatic Updates
-
             Automatic update checks every 12 hours.
 
           draft: false
-
           prerelease: false
-
           fail_on_unmatched_files: true
+          overwrite_files: false
 
-          overwrite_files: true
-
-
-      # ==========================================
-      # 13. UPLOAD BUILD ARTIFACTS
-      # ==========================================
-
-      - name: Upload Build Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-
-        with:
-
-          name: NILUBRAIN-Build-Artifacts
-
-          path: |
-            NILUBRAIN.API/bin/Release/
-            NILUBRAIN.WPF/bin/Release/
-            ${{ runner.temp }}/NILUBRAIN.Package_*.msix
-            ${{ runner.temp }}/NILUBRAIN.appinstaller
-
-          if-no-files-found: ignore
-
-          retention-days: 14
