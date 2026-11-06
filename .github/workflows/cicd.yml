@@ -102,13 +102,13 @@ jobs:
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
           Write-Host "Certificate decoded successfully"
 
-      # 9. Locate and Sign MSIX (Fixed with /q Quiet flag & timeout)
+      # 9. Locate and Sign MSIX (Fully Fixed with Secure Password Handling)
       - name: Sign MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
         timeout-minutes: 8
         env:
-          PFX_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
+          CERT_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
         run: |
           $version = "${{ steps.version.outputs.version }}"
 
@@ -153,7 +153,9 @@ jobs:
           }
 
           Write-Host "Signing MSIX package in quiet mode..."
-          & $signTool.FullName sign /q /fd SHA256 /f $pfx /p $env:PFX_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $output
+          $pass = $env:CERT_PASSWORD
+          
+          & $signTool.FullName sign /q /fd SHA256 /f $pfx /p "$pass" /tr http://timestamp.digicert.com /td SHA256 $output
 
           if ($LASTEXITCODE -ne 0) {
             throw "MSIX signing failed with exit code $LASTEXITCODE"
