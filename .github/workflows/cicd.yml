@@ -102,7 +102,7 @@ jobs:
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
           Write-Host "Certificate decoded successfully"
 
-      # 9. Locate and Sign MSIX (Fully Fixed with Secure Password Handling)
+     # 9. Locate and Sign MSIX (Fixed: No Backticks, Clean & Robust)
       - name: Sign MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -111,46 +111,45 @@ jobs:
           CERT_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
         run: |
           $version = "${{ steps.version.outputs.version }}"
+          Write-Host "Target Version: $version"
 
-          $packages = Get-ChildItem `
-            "$env:GITHUB_WORKSPACE/NILUBRAIN.Package" `
-            -Recurse -Filter "*.msix"
+          # बकटीक न वापरता सरळ सोपी कमांड
+          $workspace = "$env:GITHUB_WORKSPACE".Replace('\', '/')
+          $searchPath = "$workspace/NILUBRAIN.Package"
+          Write-Host "Searching for MSIX in: $searchPath"
 
+          $packages = Get-ChildItem -Path $searchPath -Recurse -Filter "*.msix"
           if (!$packages) {
-            throw "MSIX package not found"
+            throw "MSIX package not found in $searchPath"
           }
 
-          $msix = $packages |
-            Where-Object { $_.FullName -notmatch '\\Dependencies\\' } |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-
+          $msix = $packages | Where-Object { $_.FullName -notmatch '\\Dependencies\\' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (!$msix) {
             throw "Main MSIX package not found"
           }
+          Write-Host "Found main package: $($msix.FullName)"
 
           $output = "$env:RUNNER_TEMP\NILUBRAIN.Package_$($version)_x64.msix"
-
-          Copy-Item $msix.FullName $output -Force
+          Copy-Item -Path $msix.FullName -Destination $output -Force
 
           $pfx = "$env:RUNNER_TEMP\NILUBRAIN.pfx"
+          if (!(Test-Path $pfx)) {
+            throw "Decoded PFX certificate not found at $pfx"
+          }
 
           $cert = Get-PfxCertificate -FilePath $pfx
-
+          Write-Host "Certificate Thumbprint: $($cert.Thumbprint)"
           if ($cert.Thumbprint -ne "C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6") {
             throw "Certificate thumbprint mismatch"
           }
 
           $sdk = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-
-          $signTool = Get-ChildItem $sdk -Recurse -Filter signtool.exe |
-            Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1
-
+          $signTool = Get-ChildItem -Path $sdk -Recurse -Filter signtool.exe | Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } | Sort-Object FullName -Descending | Select-Object -First 1
+          
           if (!$signTool) {
             throw "SignTool not found"
           }
+          Write-Host "Using SignTool at: $($signTool.FullName)"
 
           Write-Host "Signing MSIX package in quiet mode..."
           $pass = $env:CERT_PASSWORD
@@ -160,6 +159,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "MSIX signing failed with exit code $LASTEXITCODE"
           }
+          Write-Host "MSIX signed successfully!"
 
           Write-Host "Verifying signature..."
           & $signTool.FullName verify /pa /v $output
@@ -167,7 +167,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "MSIX signature verification failed"
           }
-
+          Write-Host "Signature verified successfully!"
+          
       # 10. Generate AppInstaller
       - name: Generate AppInstaller
         if: github.event_name != 'pull_request'
