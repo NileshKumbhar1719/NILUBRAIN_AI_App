@@ -169,8 +169,8 @@ jobs:
 
      
      
-      #
-      # 9. SIGN AND VERIFY MSIX PACKAGE
+      
+      # 9. SIGN AND VERIFY MSIX
       - name: Sign and Verify MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -188,9 +188,12 @@ jobs:
 
           $version = "${{ steps.version.outputs.version }}"
 
-          Write-Host "Version: $version"
+          $pfx = Join-Path $env:RUNNER_TEMP "NILUBRAIN.pfx"
 
-          # Find MSIX
+          if (!(Test-Path $pfx)) {
+            throw "PFX not found!"
+          }
+
           $searchPath = Join-Path $env:GITHUB_WORKSPACE "NILUBRAIN.Package"
 
           $packages = @(
@@ -202,21 +205,12 @@ jobs:
           )
 
           if ($packages.Count -eq 0) {
-            throw "MSIX package not found!"
+            throw "MSIX not found!"
           }
-
-          $msix = $packages[0]
 
           $output = Join-Path $env:RUNNER_TEMP "NILUBRAIN.Package_${version}_x64.msix"
 
-          Copy-Item -LiteralPath $msix.FullName -Destination $output -Force
-
-          # Load certificate
-          $pfx = Join-Path $env:RUNNER_TEMP "NILUBRAIN.pfx"
-
-          if (!(Test-Path $pfx)) {
-            throw "PFX not found!"
-          }
+          Copy-Item $packages[0].FullName $output -Force
 
           $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
             $pfx,
@@ -231,34 +225,65 @@ jobs:
             }
 
             if (!$cert.HasPrivateKey) {
-              throw "Certificate private key missing!"
+              throw "Private key missing!"
             }
 
             Write-Host "CERTIFICATE VALIDATED!"
 
+            # Export public certificate
+            $cerPath = Join-Path $env:RUNNER_TEMP "NILUBRAIN.cer"
+
+            [System.IO.File]::WriteAllBytes(
+              $cerPath,
+              $cert.Export(
+                [System.Security.Cryptography.X509Certificates.X509ContentType]::Cert
+              )
+            )
+
+            # Trust the self-signed certificate on this runner
+            $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+              "Root",
+              [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+            )
+
+            try {
+              $store.Open(
+                [System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite
+              )
+
+              $existing = $store.Certificates.Find(
+                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $cert.Thumbprint,
+                $false
+              )
+
+              if ($existing.Count -eq 0) {
+                $store.Add($cert)
+              }
+
+              Write-Host "ROOT CERTIFICATE INSTALLED!"
+            }
+            finally {
+              $store.Close()
+            }
+
             # Locate SignTool
             $sdk = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
 
-            $signTools = @(
-              Get-ChildItem -Path $sdk -Recurse -Filter "signtool.exe" |
+            $signTool = Get-ChildItem $sdk -Recurse -Filter signtool.exe |
               Where-Object {
                 $_.FullName -match '[\\/]x64[\\/]signtool\.exe$'
-              }
-            )
-
-            if ($signTools.Count -eq 0) {
-              throw "SignTool not found!"
-            }
-
-            $signTool = $signTools |
+              } |
               Sort-Object FullName -Descending |
               Select-Object -First 1 -ExpandProperty FullName
 
-            Write-Host "SignTool: $signTool"
+            if (!$signTool) {
+              throw "SignTool not found!"
+            }
 
-            # Sign MSIX
-            Write-Host "STARTING MSIX SIGNING..."
+            Write-Host "SIGNTOOL: $signTool"
 
+            # Sign
             & $signTool sign `
               /fd SHA256 `
               /f $pfx `
@@ -271,35 +296,26 @@ jobs:
 
             Write-Host "MSIX SIGNED SUCCESSFULLY!"
 
-            # Verify package signature integrity.
-            # /pa checks Authenticode trust policy and may reject
-            # a self-signed certificate on a hosted runner.
+            # Verify using Windows Authenticode policy
+            & $signTool verify /pa /v $output
 
-            Write-Host "VERIFYING MSIX SIGNATURE..."
-
-            & $signTool verify /all /v $output
-
-            $verifyCode = $LASTEXITCODE
-
-            if ($verifyCode -ne 0) {
-              throw "MSIX signature verification failed: $verifyCode"
+            if ($LASTEXITCODE -ne 0) {
+              throw "MSIX trust verification failed!"
             }
 
-            Write-Host "MSIX SIGNATURE VERIFIED!"
+            Write-Host "MSIX SIGNATURE AND TRUST VERIFIED!"
 
-            # Final validation
-            $signedFile = Get-Item $output
+            if (!(Test-Path $output)) {
+              throw "Signed MSIX missing!"
+            }
 
-            if ($signedFile.Length -le 0) {
+            if ((Get-Item $output).Length -le 0) {
               throw "Signed MSIX is empty!"
             }
 
-            Write-Host "=================================="
-            Write-Host "NILUBRAIN AI SIGNING COMPLETED"
+            Write-Host "NILUBRAIN SIGNING COMPLETED!"
             Write-Host "Version: $version"
-            Write-Host "File: $($signedFile.FullName)"
-            Write-Host "Size: $($signedFile.Length) bytes"
-            Write-Host "=================================="
+            Write-Host "File: $output"
 
           }
           finally {
