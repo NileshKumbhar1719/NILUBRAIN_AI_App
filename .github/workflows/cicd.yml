@@ -102,22 +102,27 @@ jobs:
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
           Write-Host "Certificate decoded successfully"
 
-     # 9. Locate and Sign MSIX (Fixed: No Backticks, Clean & Robust)
+    # 9. Locate and Sign MSIX (Strict Password Validation Added)
       - name: Sign MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
-        timeout-minutes: 8
+        timeout-minutes: 5
         env:
           CERT_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
         run: |
+          # 1. पासवर्ड रिकामे किंवा गायब आहे का ते आधीच तपासा (8 मिनिटे वाट पाहण्याची गरज नाही)
+          $pass = $env:CERT_PASSWORD
+          if ([string]::IsNullOrEmpty($pass)) {
+              throw "CRITICAL ERROR: CERT_PASSWORD/MSIX_CERTIFICATE_PASSWORD secret is missing or empty in GitHub repository!"
+          }
+          Write-Host "Password successfully loaded from secrets."
+
           $version = "${{ steps.version.outputs.version }}"
           Write-Host "Target Version: $version"
 
-          # बकटीक न वापरता सरळ सोपी कमांड
           $workspace = "$env:GITHUB_WORKSPACE".Replace('\', '/')
           $searchPath = "$workspace/NILUBRAIN.Package"
-          Write-Host "Searching for MSIX in: $searchPath"
-
+          
           $packages = Get-ChildItem -Path $searchPath -Recurse -Filter "*.msix"
           if (!$packages) {
             throw "MSIX package not found in $searchPath"
@@ -149,11 +154,8 @@ jobs:
           if (!$signTool) {
             throw "SignTool not found"
           }
-          Write-Host "Using SignTool at: $($signTool.FullName)"
 
           Write-Host "Signing MSIX package in quiet mode..."
-          $pass = $env:CERT_PASSWORD
-          
           & $signTool.FullName sign /q /fd SHA256 /f $pfx /p "$pass" /tr http://timestamp.digicert.com /td SHA256 $output
 
           if ($LASTEXITCODE -ne 0) {
@@ -168,7 +170,7 @@ jobs:
             throw "MSIX signature verification failed"
           }
           Write-Host "Signature verified successfully!"
-          
+
       # 10. Generate AppInstaller
       - name: Generate AppInstaller
         if: github.event_name != 'pull_request'
