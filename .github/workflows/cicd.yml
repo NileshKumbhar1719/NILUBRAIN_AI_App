@@ -102,7 +102,8 @@ jobs:
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
           Write-Host "Certificate decoded successfully"
 
-      # 9. Locate and Sign MSIX (Final Optimized & Secure Version)
+     
+      # 9. Locate and Sign MSIX Package
       - name: Sign MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -110,72 +111,148 @@ jobs:
         env:
           CERT_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
         run: |
-          # 1. पासवर्ड अस्तित्वात आहे का ते तपासा
-          $pass = $env:CERT_PASSWORD
-          if ([string]::IsNullOrEmpty($pass)) {
-              throw "CRITICAL ERROR: CERT_PASSWORD secret is missing or empty in GitHub repository!"
-          }
-          Write-Host "Password successfully loaded from secrets."
+          $ErrorActionPreference = "Stop"
 
-          # 2. व्हर्जन आणि पॅकेज शोधणे
+          # 1. Validate password
+          $pass = $env:CERT_PASSWORD
+
+          if ([string]::IsNullOrWhiteSpace($pass)) {
+              throw "CERT_PASSWORD secret is missing or empty!"
+          }
+
+          Write-Host "Certificate password loaded successfully."
+
+          # 2. Get package version
           $version = "${{ steps.version.outputs.version }}"
+
           Write-Host "Target Version: $version"
 
-          $workspace = "$env:GITHUB_WORKSPACE".Replace('\', '/')
-          $searchPath = "$workspace/NILUBRAIN.Package"
-          
-          $packages = Get-ChildItem -Path $searchPath -Recurse -Filter "*.msix"
-          if (!$packages) {
-            throw "MSIX package not found in $searchPath"
+          # 3. Locate MSIX package
+          $searchPath = Join-Path $env:GITHUB_WORKSPACE "NILUBRAIN.Package"
+
+          if (!(Test-Path $searchPath)) {
+              throw "Package directory not found: $searchPath"
           }
 
-          $msix = $packages | Where-Object { $_.FullName -notmatch '\\Dependencies\\' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (!$msix) {
-            throw "Main MSIX package not found"
+          $packages = @(
+              Get-ChildItem -Path $searchPath -Recurse -Filter "*.msix" |
+              Where-Object {
+                  $_.FullName -notmatch '[\\/]Dependencies[\\/]'
+              } |
+              Sort-Object LastWriteTime -Descending
+          )
+
+          if ($packages.Count -eq 0) {
+              throw "MSIX package not found!"
           }
-          Write-Host "Found main package: $($msix.FullName)"
 
-          $output = "$env:RUNNER_TEMP\NILUBRAIN.Package_$($version)_x64.msix"
-          Copy-Item -Path $msix.FullName -Destination $output -Force
+          $msix = $packages[0]
 
-          # 3. सर्टिफिकेट व्हॅलिडेशन (Thumbprint Check)
-          $pfx = "$env:RUNNER_TEMP\NILUBRAIN.pfx"
+          Write-Host "Found MSIX: $($msix.FullName)"
+
+          # 4. Copy package
+          $output = Join-Path $env:RUNNER_TEMP "NILUBRAIN.Package_${version}_x64.msix"
+
+          Write-Host "Copying MSIX package..."
+
+          Copy-Item -LiteralPath $msix.FullName -Destination $output -Force
+
+          if (!(Test-Path $output)) {
+              throw "MSIX copy failed!"
+          }
+
+          Write-Host "MSIX copied successfully: $output"
+
+          # 5. Validate PFX certificate
+          $pfx = Join-Path $env:RUNNER_TEMP "NILUBRAIN.pfx"
+
           if (!(Test-Path $pfx)) {
-            throw "Decoded PFX certificate not found at $pfx"
+              throw "PFX certificate not found: $pfx"
           }
 
-          $cert = Get-PfxCertificate -FilePath $pfx
+          Write-Host "Loading PFX certificate without interactive prompt..."
+
+          # IMPORTANT: Non-interactive certificate loading
+          $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              $pfx,
+              $pass,
+              [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
+          )
+
+          Write-Host "Certificate loaded successfully."
           Write-Host "Certificate Thumbprint: $($cert.Thumbprint)"
+
           if ($cert.Thumbprint -ne "C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6") {
-            throw "Certificate thumbprint mismatch"
+              throw "Certificate thumbprint mismatch!"
           }
 
-          # 4. SignTool शोधणे
+          if (!$cert.HasPrivateKey) {
+              throw "Certificate does not contain a private key!"
+          }
+
+          Write-Host "Certificate validation successful."
+
+          # 6. Locate SignTool
           $sdk = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
-          $signTool = Get-ChildItem -Path $sdk -Recurse -Filter signtool.exe | Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } | Sort-Object FullName -Descending | Select-Object -First 1
-          
-          if (!$signTool) {
-            throw "SignTool not found"
-          }
-          Write-Host "Using SignTool at: $($signTool.FullName)"
 
-          # 5. सायनिंग करणे (ऑफलाइन मोड - टाईमआऊट टाळण्यासाठी)
-          Write-Host "Signing MSIX package locally..."
-          & $signTool.FullName sign /q /fd SHA256 /f $pfx /p "$pass" $output
+          if (!(Test-Path $sdk)) {
+              throw "Windows SDK directory not found!"
+          }
+
+          $signTools = @(
+              Get-ChildItem -Path $sdk -Recurse -Filter "signtool.exe" |
+              Where-Object {
+                  $_.FullName -match '[\\/]x64[\\/]signtool\.exe$'
+              } |
+              Sort-Object FullName -Descending
+          )
+
+          if ($signTools.Count -eq 0) {
+              throw "SignTool x64 not found!"
+          }
+
+          $signTool = $signTools[0].FullName
+
+          Write-Host "SignTool: $signTool"
+
+          # 7. Sign MSIX package
+          Write-Host "Starting MSIX signing..."
+
+          & $signTool sign `
+              /fd SHA256 `
+              /f $pfx `
+              /p $pass `
+              $output
 
           if ($LASTEXITCODE -ne 0) {
-            throw "MSIX signing failed with exit code $LASTEXITCODE"
+              throw "MSIX signing failed. Exit code: $LASTEXITCODE"
           }
-          Write-Host "MSIX signed successfully!"
 
-          # 6. सही व्हेरिफाय करणे
-          Write-Host "Verifying signature..."
-          & $signTool.FullName verify /pa /v $output
+          Write-Host "MSIX SIGNED SUCCESSFULLY!"
+
+          # 8. Verify signature
+          Write-Host "Starting signature verification..."
+
+          & $signTool verify /pa /v $output
 
           if ($LASTEXITCODE -ne 0) {
-            throw "MSIX signature verification failed"
+              throw "Signature verification failed. Exit code: $LASTEXITCODE"
           }
-          Write-Host "Signature verified successfully!"
+
+          Write-Host "SIGNATURE VERIFIED SUCCESSFULLY!"
+
+          # 9. Final validation
+          $signedFile = Get-Item $output
+
+          Write-Host "===================================="
+          Write-Host "BUILD SIGNING COMPLETED"
+          Write-Host "Version: $version"
+          Write-Host "File: $($signedFile.FullName)"
+          Write-Host "Size: $($signedFile.Length) bytes"
+          Write-Host "===================================="
+
+          $cert.Dispose()
+
 
       # 10. Generate AppInstaller
       - name: Generate AppInstaller
