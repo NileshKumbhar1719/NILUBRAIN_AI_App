@@ -172,7 +172,10 @@ jobs:
       
       
      
+      
+      # ==========================================
       # 9. SIGN AND VERIFY MSIX
+      # ==========================================
 
       - name: Sign and Verify MSIX Package
         if: github.event_name != 'pull_request'
@@ -181,8 +184,13 @@ jobs:
         env:
           CERT_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
         run: |
+
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $false
+
+          Write-Host "NILUBRAIN MSIX SIGNING STARTED"
+
+          # STEP 1: PASSWORD
 
           Write-Host "STEP 1: Loading password"
 
@@ -193,6 +201,8 @@ jobs:
           }
 
           $version = "${{ steps.version.outputs.version }}"
+
+          # STEP 2: FIND MSIX
 
           Write-Host "STEP 2: Finding MSIX"
 
@@ -213,6 +223,8 @@ jobs:
 
           Copy-Item $msix.FullName $output -Force
 
+          # STEP 3: LOAD CERTIFICATE
+
           Write-Host "STEP 3: Loading PFX"
 
           $pfx = Join-Path $env:RUNNER_TEMP "NILUBRAIN.pfx"
@@ -229,6 +241,10 @@ jobs:
 
           try {
 
+              # STEP 4: VALIDATE CERTIFICATE
+
+              Write-Host "STEP 4: Validating certificate"
+
               if ($cert.Thumbprint -ne "C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6") {
                   throw "Certificate thumbprint mismatch!"
               }
@@ -237,24 +253,13 @@ jobs:
                   throw "Private key missing!"
               }
 
-              Write-Host "CERTIFICATE VALIDATED!"
-
-              Write-Host "STEP 4: Exporting public certificate"
-
-              $cerPath = Join-Path $env:RUNNER_TEMP "NILUBRAIN.cer"
-
-              [System.IO.File]::WriteAllBytes(
-                  $cerPath,
-                  $cert.Export(
-                      [System.Security.Cryptography.X509Certificates.X509ContentType]::Cert
-                  )
-              )
-
-              if (!(Test-Path $cerPath)) {
-                  throw "Certificate export failed!"
+              if ($cert.NotAfter -le (Get-Date)) {
+                  throw "Certificate expired!"
               }
 
-              Write-Host "CERTIFICATE EXPORTED SUCCESSFULLY!"
+              Write-Host "CERTIFICATE VALIDATED!"
+
+              # STEP 5: FIND SIGNTOOL
 
               Write-Host "STEP 5: Finding SignTool"
 
@@ -273,6 +278,8 @@ jobs:
 
               Write-Host "SignTool: $signTool"
 
+              # STEP 6: SIGN MSIX
+
               Write-Host "STEP 6: SIGNING MSIX"
 
               & $signTool sign `
@@ -287,32 +294,65 @@ jobs:
                   throw "MSIX signing failed! Exit code: $signCode"
               }
 
-              Write-Host "SIGNING SUCCESSFUL!"
+              Write-Host "MSIX SIGNING SUCCESSFUL!"
 
-              Write-Host "STEP 7: VERIFYING PACKAGE SIGNATURE"
+              # STEP 7: VERIFY SIGNATURE AND CERTIFICATE
 
-              # Verify package signature without claiming
-              # that the self-signed certificate is publicly trusted.
+              Write-Host "STEP 7: VERIFYING SIGNATURE"
 
-              & $signTool verify /pa /v $output
+              # Use SignTool package verification without
+              # requiring public-root trust policy.
+
+              & $signTool verify /pa /all /v $output
 
               $verifyCode = $LASTEXITCODE
 
               if ($verifyCode -ne 0) {
+
                   Write-Warning "Windows trust verification failed."
-                  Write-Warning "Certificate is self-signed or not trusted."
-                  Write-Warning "Production distribution requires a trusted CA certificate."
+                  Write-Warning "Checking package signature using SignTool."
+
+                  # Do not report trust verification as successful.
+                  # The signed file will still undergo signer validation.
+
               }
               else {
-                  Write-Host "SIGNATURE AND TRUST VERIFIED!"
+
+                  Write-Host "WINDOWS TRUST VERIFICATION SUCCESSFUL!"
+
               }
 
-              Write-Host "STEP 8: FINAL FILE VALIDATION"
+              # STEP 8: VERIFY SIGNER IDENTITY
+
+              Write-Host "STEP 8: VERIFYING SIGNER IDENTITY"
+
+              $signature = Get-AuthenticodeSignature -FilePath $output
+
+              if ($null -eq $signature.SignerCertificate) {
+                  throw "Signer certificate not found!"
+              }
+
+              if (
+                  $signature.SignerCertificate.Thumbprint -ne
+                  $cert.Thumbprint
+              ) {
+                  throw "Signer certificate thumbprint mismatch!"
+              }
+
+              Write-Host "SIGNER CERTIFICATE MATCHED!"
+
+              # STEP 9: FINAL FILE VALIDATION
+
+              Write-Host "STEP 9: FINAL FILE VALIDATION"
+
+              if (!(Test-Path $output)) {
+                  throw "Signed MSIX not found!"
+              }
 
               $file = Get-Item $output
 
               if ($file.Length -le 0) {
-                  throw "Signed MSIX is empty!"
+                  throw "MSIX file is empty!"
               }
 
               Write-Host "================================"
@@ -324,7 +364,9 @@ jobs:
 
           }
           finally {
+
               $cert.Dispose()
+
           }
 
 
