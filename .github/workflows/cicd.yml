@@ -36,7 +36,7 @@ jobs:
 
       # 4. Restore Entire Solution (सर्व प्रोजेक्ट्ससाठी पॅकेज रिस्टोअर करणे)
       - name: Restore Solution
-        run: dotnet restore NILUBRAIN_AI_App.sln
+        run: dotnet restore NILUBRAIN_AI_App.sln -r win-x64
 
       # 5. Build API
       - name: Build API
