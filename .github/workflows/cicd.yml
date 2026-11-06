@@ -170,9 +170,10 @@ jobs:
      
      
       
+      
       # 9. SIGN AND VERIFY MSIX
-    
-      - name: Sign MSIX Package
+
+      - name: Sign and Verify MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
         timeout-minutes: 10
@@ -180,13 +181,14 @@ jobs:
           CERT_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
         run: |
           $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $false
 
           Write-Host "STEP 1: Loading password"
 
           $pass = $env:CERT_PASSWORD
 
           if ([string]::IsNullOrWhiteSpace($pass)) {
-            throw "Certificate password missing!"
+              throw "Certificate password missing!"
           }
 
           $version = "${{ steps.version.outputs.version }}"
@@ -196,14 +198,14 @@ jobs:
           $searchPath = Join-Path $env:GITHUB_WORKSPACE "NILUBRAIN.Package"
 
           $msix = Get-ChildItem $searchPath -Recurse -Filter "*.msix" |
-            Where-Object {
-              $_.FullName -notmatch '[\\/]Dependencies[\\/]'
-            } |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
+              Where-Object {
+                  $_.FullName -notmatch '[\\/]Dependencies[\\/]'
+              } |
+              Sort-Object LastWriteTime -Descending |
+              Select-Object -First 1
 
           if (!$msix) {
-            throw "MSIX not found!"
+              throw "MSIX not found!"
           }
 
           $output = Join-Path $env:RUNNER_TEMP "NILUBRAIN.Package_${version}_x64.msix"
@@ -215,97 +217,116 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP "NILUBRAIN.pfx"
 
           if (!(Test-Path $pfx)) {
-            throw "PFX not found!"
+              throw "PFX not found!"
           }
 
           $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
-            $pfx,
-            $pass,
-            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
+              $pfx,
+              $pass,
+              [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
           )
 
           try {
 
-            if ($cert.Thumbprint -ne "C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6") {
-              throw "Thumbprint mismatch!"
-            }
+              if ($cert.Thumbprint -ne "C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6") {
+                  throw "Certificate thumbprint mismatch!"
+              }
 
-            if (!$cert.HasPrivateKey) {
-              throw "Private key missing!"
-            }
+              if (!$cert.HasPrivateKey) {
+                  throw "Private key missing!"
+              }
 
-            Write-Host "STEP 4: CERTIFICATE VALIDATED!"
+              Write-Host "CERTIFICATE VALIDATED!"
 
-            Write-Host "STEP 5: Finding SignTool"
+              Write-Host "STEP 4: Trusting certificate on CI runner"
 
-            $sdk = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
+              # Export public certificate only.
+              $cerPath = Join-Path $env:RUNNER_TEMP "NILUBRAIN.cer"
 
-            $signTool = Get-ChildItem $sdk -Recurse -Filter signtool.exe |
-              Where-Object {
-                $_.FullName -match '[\\/]x64[\\/]signtool\.exe$'
-              } |
-              Sort-Object FullName -Descending |
-              Select-Object -First 1 -ExpandProperty FullName
+              [System.IO.File]::WriteAllBytes(
+                  $cerPath,
+                  $cert.Export(
+                      [System.Security.Cryptography.X509Certificates.X509ContentType]::Cert
+                  )
+              )
 
-            if (!$signTool) {
-              throw "SignTool not found!"
-            }
+              # Trust this self-signed certificate for this runner only.
+              Import-Certificate `
+                  -FilePath $cerPath `
+                  -CertStoreLocation "Cert:\CurrentUser\Root" |
+                  Out-Null
 
-            Write-Host "SignTool: $signTool"
+              Import-Certificate `
+                  -FilePath $cerPath `
+                  -CertStoreLocation "Cert:\CurrentUser\TrustedPeople" |
+                  Out-Null
 
-            Write-Host "STEP 6: SIGNING MSIX"
+              Write-Host "CERTIFICATE TRUST CONFIGURED!"
 
-            & $signTool sign `
-              /fd SHA256 `
-              /f $pfx `
-              /p $pass `
-              $output
+              Write-Host "STEP 5: Finding SignTool"
 
-            if ($LASTEXITCODE -ne 0) {
-              throw "MSIX signing failed!"
-            }
+              $sdk = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"
 
-            Write-Host "STEP 7: SIGNING SUCCESSFUL!"
+              $signTool = Get-ChildItem $sdk -Recurse -Filter signtool.exe |
+                  Where-Object {
+                      $_.FullName -match '[\\/]x64[\\/]signtool\.exe$'
+                  } |
+                  Sort-Object FullName -Descending |
+                  Select-Object -First 1 -ExpandProperty FullName
 
-            Write-Host "STEP 8: VERIFYING SIGNATURE"
+              if (!$signTool) {
+                  throw "SignTool not found!"
+              }
 
-            # Verify cryptographic package signature and signer.
-            # Do not treat a self-signed root trust failure as
-            # successful Windows installation trust.
+              Write-Host "SignTool: $signTool"
 
-            & $signTool verify /pa /v $output
+              Write-Host "STEP 6: SIGNING MSIX"
 
-            $verifyCode = $LASTEXITCODE
+              & $signTool sign `
+                  /fd SHA256 `
+                  /f $pfx `
+                  /p $pass `
+                  $output
 
-            if ($verifyCode -ne 0) {
-              Write-Warning "Windows trust verification failed."
-              Write-Warning "The package was signed, but its certificate is not trusted by this runner."
-              Write-Warning "Use a trusted code-signing certificate for production distribution."
-            }
-            else {
-              Write-Host "SIGNATURE AND TRUST VERIFIED!"
-            }
+              $signCode = $LASTEXITCODE
 
-            Write-Host "STEP 9: FINAL FILE VALIDATION"
+              if ($signCode -ne 0) {
+                  throw "MSIX signing failed! Exit code: $signCode"
+              }
 
-            $file = Get-Item $output
+              Write-Host "SIGNING SUCCESSFUL!"
 
-            if ($file.Length -le 0) {
-              throw "Signed MSIX is empty!"
-            }
+              Write-Host "STEP 7: VERIFYING SIGNATURE"
 
-            Write-Host "================================"
-            Write-Host "NILUBRAIN SIGNING COMPLETED"
-            Write-Host "Version: $version"
-            Write-Host "File: $output"
-            Write-Host "Size: $($file.Length)"
-            Write-Host "================================"
+              & $signTool verify /pa /v $output
+
+              $verifyCode = $LASTEXITCODE
+
+              if ($verifyCode -ne 0) {
+                  throw "MSIX signature verification failed! Exit code: $verifyCode"
+              }
+
+              Write-Host "SIGNATURE AND CI TRUST VERIFICATION SUCCESSFUL!"
+
+              Write-Host "STEP 8: FINAL FILE VALIDATION"
+
+              $file = Get-Item $output
+
+              if ($file.Length -le 0) {
+                  throw "Signed MSIX is empty!"
+              }
+
+              Write-Host "================================"
+              Write-Host "NILUBRAIN SIGNING COMPLETED"
+              Write-Host "Version: $version"
+              Write-Host "File: $output"
+              Write-Host "Size: $($file.Length)"
+              Write-Host "================================"
 
           }
           finally {
-            $cert.Dispose()
+              $cert.Dispose()
           }
-
 
 
       # ==========================================
