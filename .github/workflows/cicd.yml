@@ -1,4 +1,3 @@
-
 name: NILUBRAIN AI CI-CD
 
 on:
@@ -21,11 +20,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1. Checkout
+      # 1. Checkout Source Code
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      # 2. Setup .NET
+      # 2. Setup .NET 8
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
@@ -35,9 +34,9 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      # 4. Restore API
-      - name: Restore API
-        run: dotnet restore NILUBRAIN.API/NILUBRAIN.API.csproj
+      # 4. Restore Entire Solution (सर्व प्रोजेक्ट्ससाठी पॅकेज रिस्टोअर करणे)
+      - name: Restore Solution
+        run: dotnet restore NILUBRAIN.sln
 
       # 5. Build API
       - name: Build API
@@ -55,7 +54,7 @@ jobs:
             /p:UapAppxPackageBuildMode=SideloadOnly `
             /p:AppxPackageSigningEnabled=false
 
-      # 7. Read Package Version
+      # 7. Read Package Version from Manifest
       - name: Read Package Version
         id: version
         shell: pwsh
@@ -219,8 +218,6 @@ jobs:
             $writer.Dispose()
           }
 
-          [xml]$check = [IO.File]::ReadAllText($file)
-
           Write-Host "AppInstaller XML generated successfully"
 
       # 11. Publish GitHub Release
@@ -252,7 +249,7 @@ jobs:
           fail_on_unmatched_files: true
           overwrite_files: true
 
-      # 12. Upload build logs/artifacts
+      # 12. Upload Build Artifacts
       - name: Upload Build Artifacts
         if: always()
         uses: actions/upload-artifact@v4
