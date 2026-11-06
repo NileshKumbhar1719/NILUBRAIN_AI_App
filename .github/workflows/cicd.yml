@@ -78,7 +78,7 @@ jobs:
 
           Write-Host "Package Version: $version"
 
-      # 8. Decode Signing Certificate
+     # 8. Decode Signing Certificate (Updated with whitespace/newline cleaner)
       - name: Decode MSIX Certificate
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -91,11 +91,18 @@ jobs:
 
           $pfxPath = "$env:RUNNER_TEMP\NILUBRAIN.pfx"
 
-          $bytes = [Convert]::FromBase64String($env:CERT_BASE64)
+          # कोणत्याही accidental spaces किंवा newlines काढून टाकण्यासाठी हे क्लिनर वापरा
+          $cleanBase64 = $env:CERT_BASE64 -replace '\s', ''
+
+          try {
+              $bytes = [Convert]::FromBase64String($cleanBase64)
+          } catch {
+              throw "Failed to convert CERT_BASE64. Ensure the secret is a single continuous Base64 string. Error: $_"
+          }
 
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
 
-          Write-Host "Certificate decoded"
+          Write-Host "Certificate decoded successfully"
 
       # 9. Locate and Sign MSIX
       - name: Sign MSIX Package
