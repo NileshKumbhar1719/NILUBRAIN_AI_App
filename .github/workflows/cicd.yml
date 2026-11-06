@@ -102,7 +102,7 @@ jobs:
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
           Write-Host "Certificate decoded successfully"
 
-    # 9. Locate and Sign MSIX (Final Optimized & Secure Version)
+      # 9. Locate and Sign MSIX (Final Optimized & Secure Version)
       - name: Sign MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -176,7 +176,6 @@ jobs:
             throw "MSIX signature verification failed"
           }
           Write-Host "Signature verified successfully!"
-          
 
       # 10. Generate AppInstaller
       - name: Generate AppInstaller
