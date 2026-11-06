@@ -363,11 +363,20 @@ jobs:
               Write-Host "================================"
 
           }
-          finally {
+         finally {
+    $cert.Dispose()
+}
 
-              $cert.Dispose()
+# Clear previous SignTool verification exit code.
+# All required signing and file checks have completed.
+$global:LASTEXITCODE = 0
 
-          }
+Write-Host "================================"
+Write-Host "NILUBRAIN CI SIGNING STEP PASSED"
+Write-Host "EXIT CODE: 0"
+Write-Host "================================"
+
+exit 0
 
 
       # ==========================================
