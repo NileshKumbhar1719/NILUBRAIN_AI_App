@@ -558,7 +558,8 @@ jobs:
           Write-Host "===================================="
 
 
-      # 12. PUBLISH GITHUB RELEASE
+     
+      # 12. PUBLISH GITHUB RELEASE AUTOMATICALLY
 
       - name: Publish GitHub Release
         if: github.event_name != 'pull_request'
@@ -581,6 +582,7 @@ jobs:
             New automated Windows desktop release.
 
             ## Installation
+
             Download NILUBRAIN.appinstaller and open it using Windows App Installer.
 
             ## Platform
@@ -593,6 +595,5 @@ jobs:
 
           draft: false
           prerelease: false
-          fail_on_unmatched_files: true
           overwrite_files: false
-
+          fail_on_unmatched_files: true
