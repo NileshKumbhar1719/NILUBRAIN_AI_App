@@ -18,6 +18,7 @@ jobs:
   build:
     name: Build, Sign and Release NILUBRAIN
     runs-on: windows-latest
+    timeout-minutes: 15
 
     steps:
       # 1. Checkout Source Code
@@ -34,7 +35,7 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      # 4. Restore Entire Solution (सोल्युशनचे नाव दुरुस्त केले आहे)
+      # 4. Restore Entire Solution
       - name: Restore Solution
         run: dotnet restore NILUBRAIN_AI_App.sln -r win-x64
 
@@ -78,7 +79,7 @@ jobs:
 
           Write-Host "Package Version: $version"
 
-     # 8. Decode Signing Certificate (Updated with whitespace/newline cleaner)
+      # 8. Decode Signing Certificate
       - name: Decode MSIX Certificate
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -90,8 +91,6 @@ jobs:
           }
 
           $pfxPath = "$env:RUNNER_TEMP\NILUBRAIN.pfx"
-
-          # कोणत्याही accidental spaces किंवा newlines काढून टाकण्यासाठी हे क्लिनर वापरा
           $cleanBase64 = $env:CERT_BASE64 -replace '\s', ''
 
           try {
@@ -101,13 +100,13 @@ jobs:
           }
 
           [IO.File]::WriteAllBytes($pfxPath, $bytes)
-
           Write-Host "Certificate decoded successfully"
 
-      # 9. Locate and Sign MSIX
+      # 9. Locate and Sign MSIX (Fixed with /q Quiet flag & timeout)
       - name: Sign MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
+        timeout-minutes: 8
         env:
           PFX_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
         run: |
@@ -153,12 +152,14 @@ jobs:
             throw "SignTool not found"
           }
 
-          & $signTool.FullName sign /fd SHA256 /f $pfx /p $env:PFX_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $output
+          Write-Host "Signing MSIX package in quiet mode..."
+          & $signTool.FullName sign /q /fd SHA256 /f $pfx /p $env:PFX_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $output
 
           if ($LASTEXITCODE -ne 0) {
-            throw "MSIX signing failed"
+            throw "MSIX signing failed with exit code $LASTEXITCODE"
           }
 
+          Write-Host "Verifying signature..."
           & $signTool.FullName verify /pa /v $output
 
           if ($LASTEXITCODE -ne 0) {
