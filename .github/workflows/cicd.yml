@@ -559,7 +559,8 @@ jobs:
 
 
      
-      # 12. PUBLISH GITHUB RELEASE AUTOMATICALLY
+      
+      # 12. AUTOMATIC GITHUB RELEASE
 
       - name: Publish GitHub Release
         if: github.event_name != 'pull_request'
@@ -567,9 +568,7 @@ jobs:
 
         with:
           tag_name: v${{ steps.version.outputs.version }}
-
           name: NILUBRAIN AI v${{ steps.version.outputs.version }}
-
           target_commitish: master
 
           files: |
@@ -579,19 +578,16 @@ jobs:
           body: |
             # NILUBRAIN AI v${{ steps.version.outputs.version }}
 
-            New automated Windows desktop release.
+            Automated Windows desktop release.
 
             ## Installation
-
-            Download NILUBRAIN.appinstaller and open it using Windows App Installer.
+            Download NILUBRAIN.appinstaller.
 
             ## Platform
             Windows x64
 
-            Package format: MSIX
-
             ## Automatic Updates
-            Automatic update checks every 12 hours.
+            Update checks every 12 hours.
 
           draft: false
           prerelease: false
