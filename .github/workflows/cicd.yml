@@ -23,34 +23,55 @@ jobs:
 
     steps:
 
-      # 1. Checkout Source
+      # ==========================================
+      # 1. CHECKOUT SOURCE
+      # ==========================================
+
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      # 2. Setup .NET 8
+      # ==========================================
+      # 2. SETUP DOTNET 8
+      # ==========================================
+
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # 3. Setup MSBuild
+      # ==========================================
+      # 3. SETUP MSBUILD
+      # ==========================================
+
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      # 4. Restore Solution
+      # ==========================================
+      # 4. RESTORE SOLUTION
+      # ==========================================
+
       - name: Restore Solution
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           dotnet restore NILUBRAIN_AI_App.sln -r win-x64
 
           if ($LASTEXITCODE -ne 0) {
             throw "Solution restore failed!"
           }
 
-      # 5. Build API
+          Write-Host "RESTORE SUCCESSFUL!"
+
+      # ==========================================
+      # 5. BUILD API
+      # ==========================================
+
       - name: Build API
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+
           dotnet build NILUBRAIN.API/NILUBRAIN.API.csproj `
             --configuration Release `
             --no-restore
@@ -59,7 +80,12 @@ jobs:
             throw "API build failed!"
           }
 
-      # 6. Build MSIX Package
+          Write-Host "API BUILD SUCCESSFUL!"
+
+      # ==========================================
+      # 6. BUILD MSIX PACKAGE
+      # ==========================================
+
       - name: Build MSIX Package
         shell: pwsh
         run: |
@@ -81,16 +107,22 @@ jobs:
 
           Write-Host "MSIX BUILD SUCCESSFUL!"
 
-      # 7. Read Package Version
+      # ==========================================
+      # 7. READ PACKAGE VERSION
+      # ==========================================
+
       - name: Read Package Version
         id: version
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
 
-          [xml]$manifest = Get-Content "NILUBRAIN.Package/Package.appxmanifest"
+          [xml]$manifest = Get-Content `
+            "NILUBRAIN.Package/Package.appxmanifest"
 
-          $ns = New-Object System.Xml.XmlNamespaceManager($manifest.NameTable)
+          $ns = New-Object System.Xml.XmlNamespaceManager(
+            $manifest.NameTable
+          )
 
           $ns.AddNamespace(
             "a",
@@ -116,8 +148,12 @@ jobs:
           "publisher=$publisher" >> $env:GITHUB_OUTPUT
 
           Write-Host "Package Version: $version"
+          Write-Host "Package Name: $name"
 
-      # 8. Decode Certificate
+      # ==========================================
+      # 8. DECODE CERTIFICATE
+      # ==========================================
+
       - name: Decode MSIX Certificate
         if: github.event_name != 'pull_request'
         shell: pwsh
@@ -130,7 +166,9 @@ jobs:
             throw "MSIX_CERTIFICATE_BASE64 secret is missing!"
           }
 
-          $pfxPath = Join-Path $env:RUNNER_TEMP "NILUBRAIN.pfx"
+          $pfxPath = Join-Path `
+            $env:RUNNER_TEMP `
+            "NILUBRAIN.pfx"
 
           $cleanBase64 = $env:CERT_BASE64 -replace '\s', ''
 
@@ -141,25 +179,35 @@ jobs:
             throw "Invalid certificate Base64 data!"
           }
 
-          [System.IO.File]::WriteAllBytes($pfxPath, $bytes)
+          [System.IO.File]::WriteAllBytes(
+            $pfxPath,
+            $bytes
+          )
 
           if (!(Test-Path $pfxPath)) {
-            throw "PFX creation failed!"
+            throw "PFX certificate creation failed!"
           }
 
-          Write-Host "Certificate decoded successfully!"
+          Write-Host "CERTIFICATE DECODED SUCCESSFULLY!"
 
-      # 9. Sign and Verify MSIX
+      # ==========================================
+      # 9. SIGN AND VERIFY MSIX
+      # ==========================================
+
       - name: Sign MSIX Package
         if: github.event_name != 'pull_request'
         shell: pwsh
         timeout-minutes: 10
         env:
           CERT_PASSWORD: ${{ secrets.MSIX_CERTIFICATE_PASSWORD }}
+
         run: |
+
           $ErrorActionPreference = "Stop"
 
-          # Validate Password
+          # --------------------------------------
+          # 9.1 VALIDATE PASSWORD
+          # --------------------------------------
 
           $pass = $env:CERT_PASSWORD
 
@@ -167,16 +215,33 @@ jobs:
             throw "Certificate password is missing!"
           }
 
-          # Package Version
+          Write-Host "Certificate password loaded."
+
+          # --------------------------------------
+          # 9.2 PACKAGE VERSION
+          # --------------------------------------
 
           $version = "${{ steps.version.outputs.version }}"
 
-          # Locate MSIX
+          Write-Host "Target Version: $version"
 
-          $searchPath = Join-Path $env:GITHUB_WORKSPACE "NILUBRAIN.Package"
+          # --------------------------------------
+          # 9.3 LOCATE MSIX PACKAGE
+          # --------------------------------------
+
+          $searchPath = Join-Path `
+            $env:GITHUB_WORKSPACE `
+            "NILUBRAIN.Package"
+
+          if (!(Test-Path $searchPath)) {
+            throw "MSIX package directory not found!"
+          }
 
           $packages = @(
-            Get-ChildItem -Path $searchPath -Recurse -Filter "*.msix" |
+            Get-ChildItem `
+              -Path $searchPath `
+              -Recurse `
+              -Filter "*.msix" |
             Where-Object {
               $_.FullName -notmatch '[\\/]Dependencies[\\/]'
             } |
@@ -191,23 +256,38 @@ jobs:
 
           Write-Host "Found MSIX: $($msix.FullName)"
 
-          # Copy MSIX
+          # --------------------------------------
+          # 9.4 COPY MSIX PACKAGE
+          # --------------------------------------
 
-          $output = Join-Path $env:RUNNER_TEMP "NILUBRAIN.Package_${version}_x64.msix"
+          $output = Join-Path `
+            $env:RUNNER_TEMP `
+            "NILUBRAIN.Package_${version}_x64.msix"
 
-          Copy-Item -LiteralPath $msix.FullName -Destination $output -Force
+          Copy-Item `
+            -LiteralPath $msix.FullName `
+            -Destination $output `
+            -Force
 
           if (!(Test-Path $output)) {
             throw "MSIX copy failed!"
           }
 
-          # Load PFX
+          Write-Host "MSIX copied successfully!"
 
-          $pfx = Join-Path $env:RUNNER_TEMP "NILUBRAIN.pfx"
+          # --------------------------------------
+          # 9.5 LOAD PFX CERTIFICATE
+          # --------------------------------------
+
+          $pfx = Join-Path `
+            $env:RUNNER_TEMP `
+            "NILUBRAIN.pfx"
 
           if (!(Test-Path $pfx)) {
-            throw "PFX not found!"
+            throw "PFX certificate not found!"
           }
+
+          Write-Host "Loading PFX certificate..."
 
           $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
             $pfx,
@@ -217,11 +297,16 @@ jobs:
 
           try {
 
-            # Validate Certificate
+            # ----------------------------------
+            # 9.6 VALIDATE CERTIFICATE
+            # ----------------------------------
 
             Write-Host "Certificate Thumbprint: $($cert.Thumbprint)"
 
-            if ($cert.Thumbprint -ne "C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6") {
+            if (
+              $cert.Thumbprint -ne
+              "C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6"
+            ) {
               throw "Certificate thumbprint mismatch!"
             }
 
@@ -231,42 +316,105 @@ jobs:
 
             Write-Host "Certificate validation successful!"
 
-            # Export Public Certificate
+            # ----------------------------------
+            # 9.7 EXPORT PUBLIC CERTIFICATE
+            # ----------------------------------
 
-            $cerPath = Join-Path $env:RUNNER_TEMP "NILUBRAIN.cer"
+            Write-Host "Exporting public certificate..."
+
+            $cerPath = Join-Path `
+              $env:RUNNER_TEMP `
+              "NILUBRAIN.cer"
 
             $certBytes = $cert.Export(
               [System.Security.Cryptography.X509Certificates.X509ContentType]::Cert
             )
 
-            [System.IO.File]::WriteAllBytes($cerPath, $certBytes)
+            [System.IO.File]::WriteAllBytes(
+              $cerPath,
+              $certBytes
+            )
 
-            # Install Trusted Root for this runner
-
-            Write-Host "Installing Trusted Root certificate..."
-
-            Import-Certificate `
-              -FilePath $cerPath `
-              -CertStoreLocation "Cert:\CurrentUser\Root" `
-              -ErrorAction Stop | Out-Null
-
-            $trustedCert = Get-ChildItem Cert:\CurrentUser\Root |
-              Where-Object {
-                $_.Thumbprint -eq $cert.Thumbprint
-              }
-
-            if (!$trustedCert) {
-              throw "Trusted Root installation failed!"
+            if (!(Test-Path $cerPath)) {
+              throw "CER export failed!"
             }
 
-            Write-Host "Trusted Root installation successful!"
+            Write-Host "Certificate exported successfully!"
 
-            # Locate SignTool
+            # ----------------------------------
+            # 9.8 INSTALL TRUSTED ROOT
+            # ----------------------------------
 
-            $sdk = "${env:ProgramFiles(x86)}\Windows Kits\10\bin"
+            Write-Host "Installing certificate into Windows Trusted Root..."
+
+            $certUtil = Join-Path `
+              $env:WINDIR `
+              "System32\certutil.exe"
+
+            if (!(Test-Path $certUtil)) {
+              throw "Windows certutil.exe not found!"
+            }
+
+            & $certUtil -user -addstore -f Root $cerPath
+
+            $certUtilExitCode = $LASTEXITCODE
+
+            if ($certUtilExitCode -ne 0) {
+              throw "Certificate installation failed: $certUtilExitCode"
+            }
+
+            Write-Host "Certificate installation command completed."
+
+            # Verify installed certificate
+
+            $rootStore = New-Object `
+              System.Security.Cryptography.X509Certificates.X509Store(
+                "Root",
+                [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+              )
+
+            try {
+
+              $rootStore.Open(
+                [System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly
+              )
+
+              $trusted = $rootStore.Certificates.Find(
+                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $cert.Thumbprint,
+                $false
+              )
+
+              if ($trusted.Count -eq 0) {
+                throw "Trusted Root verification failed!"
+              }
+
+              Write-Host "Trusted Root certificate verified!"
+
+            }
+            finally {
+
+              $rootStore.Close()
+
+            }
+
+            # ----------------------------------
+            # 9.9 LOCATE SIGNTOOL
+            # ----------------------------------
+
+            $sdk = Join-Path `
+              ${env:ProgramFiles(x86)} `
+              "Windows Kits\10\bin"
+
+            if (!(Test-Path $sdk)) {
+              throw "Windows SDK not found!"
+            }
 
             $signTools = @(
-              Get-ChildItem -Path $sdk -Recurse -Filter "signtool.exe" |
+              Get-ChildItem `
+                -Path $sdk `
+                -Recurse `
+                -Filter "signtool.exe" |
               Where-Object {
                 $_.FullName -match '[\\/]x64[\\/]signtool\.exe$'
               } |
@@ -274,14 +422,16 @@ jobs:
             )
 
             if ($signTools.Count -eq 0) {
-              throw "SignTool not found!"
+              throw "SignTool x64 not found!"
             }
 
             $signTool = $signTools[0].FullName
 
-            Write-Host "Using SignTool: $signTool"
+            Write-Host "SignTool: $signTool"
 
-            # Sign MSIX
+            # ----------------------------------
+            # 9.10 SIGN MSIX
+            # ----------------------------------
 
             Write-Host "Starting MSIX signing..."
 
@@ -291,13 +441,17 @@ jobs:
               /p $pass `
               $output
 
-            if ($LASTEXITCODE -ne 0) {
-              throw "MSIX signing failed: $LASTEXITCODE"
+            $signExitCode = $LASTEXITCODE
+
+            if ($signExitCode -ne 0) {
+              throw "MSIX signing failed: $signExitCode"
             }
 
             Write-Host "MSIX SIGNED SUCCESSFULLY!"
 
-            # Verify Signature
+            # ----------------------------------
+            # 9.11 VERIFY MSIX
+            # ----------------------------------
 
             Write-Host "Starting signature verification..."
 
@@ -311,24 +465,36 @@ jobs:
 
             Write-Host "SIGNATURE VERIFIED SUCCESSFULLY!"
 
-            # Final Validation
+            # ----------------------------------
+            # 9.12 FINAL VALIDATION
+            # ----------------------------------
 
             $signedFile = Get-Item $output
 
+            Write-Host "===================================="
+            Write-Host "NILUBRAIN AI SIGNING COMPLETED"
             Write-Host "Version: $version"
-            Write-Host "Signed File: $($signedFile.FullName)"
+            Write-Host "File: $($signedFile.FullName)"
             Write-Host "Size: $($signedFile.Length) bytes"
+            Write-Host "===================================="
 
           }
           finally {
+
             $cert.Dispose()
+
           }
 
-      # 10. Generate AppInstaller
+
+      # ==========================================
+      # 10. GENERATE APPINSTALLER
+      # ==========================================
+
       - name: Generate AppInstaller
         if: github.event_name != 'pull_request'
         shell: pwsh
         run: |
+
           $ErrorActionPreference = "Stop"
 
           $version = "${{ steps.version.outputs.version }}"
@@ -337,18 +503,30 @@ jobs:
 
           $baseUrl = "https://github.com/${{ github.repository }}/releases/download/v$version"
 
+          # Create XML Document
+
           $doc = New-Object System.Xml.XmlDocument
 
-          $declaration = $doc.CreateXmlDeclaration("1.0", "utf-8", $null)
+          $declaration = $doc.CreateXmlDeclaration(
+            "1.0",
+            "utf-8",
+            $null
+          )
 
           $doc.AppendChild($declaration) | Out-Null
 
           $ns = "http://schemas.microsoft.com/appx/appinstaller/2021"
 
+          # AppInstaller Root
+
           $app = $doc.CreateElement("AppInstaller", $ns)
 
           $app.SetAttribute("Version", $version)
-          $app.SetAttribute("Uri", "$baseUrl/NILUBRAIN.appinstaller")
+
+          $app.SetAttribute(
+            "Uri",
+            "$baseUrl/NILUBRAIN.appinstaller"
+          )
 
           $doc.AppendChild($app) | Out-Null
 
@@ -374,13 +552,24 @@ jobs:
 
           $launch = $doc.CreateElement("OnLaunch", $ns)
 
-          $launch.SetAttribute("HoursBetweenUpdateChecks", "12")
+          $launch.SetAttribute(
+            "HoursBetweenUpdateChecks",
+            "12"
+          )
+
           $launch.SetAttribute("ShowPrompt", "true")
-          $launch.SetAttribute("UpdateBlocksActivation", "false")
+
+          $launch.SetAttribute(
+            "UpdateBlocksActivation",
+            "false"
+          )
 
           $settings.AppendChild($launch) | Out-Null
 
-          $background = $doc.CreateElement("AutomaticBackgroundTask", $ns)
+          $background = $doc.CreateElement(
+            "AutomaticBackgroundTask",
+            $ns
+          )
 
           $settings.AppendChild($background) | Out-Null
 
@@ -388,11 +577,14 @@ jobs:
 
           # Save XML
 
-          $file = Join-Path $env:RUNNER_TEMP "NILUBRAIN.appinstaller"
+          $file = Join-Path `
+            $env:RUNNER_TEMP `
+            "NILUBRAIN.appinstaller"
 
           $writerSettings = New-Object System.Xml.XmlWriterSettings
 
           $writerSettings.Encoding = New-Object System.Text.UTF8Encoding($false)
+
           $writerSettings.Indent = $true
 
           $writer = [System.Xml.XmlWriter]::Create(
@@ -401,25 +593,37 @@ jobs:
           )
 
           try {
+
             $doc.Save($writer)
+
           }
           finally {
+
             $writer.Dispose()
+
           }
 
           if (!(Test-Path $file)) {
             throw "AppInstaller generation failed!"
           }
 
-          Write-Host "AppInstaller generated successfully!"
+          Write-Host "APPINSTALLER GENERATED SUCCESSFULLY!"
+          Write-Host "File: $file"
 
-      # 11. Publish GitHub Release
+      # ==========================================
+      # 11. PUBLISH GITHUB RELEASE
+      # ==========================================
+
       - name: Publish GitHub Release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
+
         with:
+
           tag_name: v${{ steps.version.outputs.version }}
+
           name: NILUBRAIN AI v${{ steps.version.outputs.version }}
+
           target_commitish: master
 
           files: |
@@ -444,15 +648,23 @@ jobs:
             Automatic update checks: Every 12 hours.
 
           draft: false
+
           prerelease: false
+
           fail_on_unmatched_files: true
+
           overwrite_files: true
 
-      # 12. Upload Build Artifacts
+      # ==========================================
+      # 12. UPLOAD BUILD ARTIFACTS
+      # ==========================================
+
       - name: Upload Build Artifacts
         if: always()
         uses: actions/upload-artifact@v4
+
         with:
+
           name: NILUBRAIN-Build-Artifacts
 
           path: |
