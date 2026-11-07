@@ -9,7 +9,7 @@
 	<Identity
         Name="c6aa655c-79e0-49ed-9d91-2b3dafc07853"
         Publisher="CN=NILUBRAIN AI"
-        Version="1.0.24.7" />
+        Version="1.0.24.8" />
 
 	<Properties>
 		<DisplayName>NILUBRAIN AI</DisplayName>

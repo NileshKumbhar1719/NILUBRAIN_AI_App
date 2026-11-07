@@ -636,102 +636,234 @@ namespace NILUBRAIN.WPF.Views.InterviewAI
             });
         }
 
+
+
+
+
         private void StartPersistentPythonBackend()
         {
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
-                    string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                    string pythonDir = Path.Combine(baseDir, "PythonBackend");
-                    if (!Directory.Exists(pythonDir)) pythonDir = baseDir;
+                    // MSIX-safe application directory
+                    string baseDir = AppContext.BaseDirectory;
 
-                    string scriptPath = Path.Combine(pythonDir, "speech_listener.py");
-                    if (!File.Exists(scriptPath)) scriptPath = Path.Combine(baseDir, "speech_listener.py");
+                    string pythonDir = Path.Combine(
+                        baseDir, "PythonBackend");
 
-                    string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    string[] pythonCommands = {
-                        "python", "py", "python3",
-                        Path.Combine(localAppData, @"Programs\Python\Python312\python.exe"),
-                        Path.Combine(localAppData, @"Programs\Python\Python311\python.exe"),
-                        @"C:\Program Files\Python312\python.exe",
-                        @"C:\Python312\python.exe"
-                    };
+                    string pythonExe = Path.Combine(
+                        pythonDir, "python.exe");
 
-                    string selectedCmd = "";
-                    foreach (var cmd in pythonCommands)
+                    string scriptPath = Path.Combine(
+                        pythonDir, "speech_listener.py");
+
+                    // Validate Python runtime
+                    if (!File.Exists(pythonExe))
                     {
-                        if (string.IsNullOrEmpty(cmd)) continue;
-                        if (cmd.Contains('\\') && !File.Exists(cmd)) continue;
-                        selectedCmd = cmd;
-                        break;
-                    }
-
-                    if (string.IsNullOrEmpty(selectedCmd))
-                    {
-                        SetStatus("Python not found!");
+                        SetStatus("Python executable not found!");
+                        SetLiveText(pythonExe);
                         return;
                     }
 
+                    // Validate Whisper script
+                    if (!File.Exists(scriptPath))
+                    {
+                        SetStatus("Whisper script not found!");
+                        SetLiveText(scriptPath);
+                        return;
+                    }
+
+                    // Writable application data directory
+                    string appData = Path.Combine(
+                        Environment.GetFolderPath(
+                            Environment.SpecialFolder.LocalApplicationData),
+                        "NILUBRAIN AI");
+
+                    string cacheDir = Path.Combine(appData, "PythonCache");
+                    string hfCache = Path.Combine(cacheDir, "HuggingFace");
+                    string torchCache = Path.Combine(cacheDir, "Torch");
+                    string tempDir = Path.Combine(cacheDir, "Temp");
+
+                    Directory.CreateDirectory(hfCache);
+                    Directory.CreateDirectory(torchCache);
+                    Directory.CreateDirectory(tempDir);
+
                     var psi = new ProcessStartInfo
                     {
-                        FileName = selectedCmd,
-                        Arguments = $"\"{scriptPath}\"",
+                        FileName = pythonExe,
+
                         WorkingDirectory = pythonDir,
-                        RedirectStandardInput = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
+
                         UseShellExecute = false,
+
                         CreateNoWindow = true,
-                        StandardOutputEncoding = Encoding.UTF8
+
+                        RedirectStandardInput = true,
+
+                        RedirectStandardOutput = true,
+
+                        RedirectStandardError = true,
+
+                        StandardOutputEncoding = Encoding.UTF8,
+
+                        StandardErrorEncoding = Encoding.UTF8
                     };
 
-                    _pythonProcess = Process.Start(psi);
-                    if (_pythonProcess != null)
-                    {
-                        _pythonStdin = _pythonProcess.StandardInput;
+                    // Pass script path safely
+                    psi.ArgumentList.Add("-u");
+                    psi.ArgumentList.Add(scriptPath);
 
-                        Task.Run(async () =>
+                    // Python environment
+                    psi.Environment["PYTHONUNBUFFERED"] = "1";
+                    psi.Environment["PYTHONNOUSERSITE"] = "1";
+
+                    // Writable cache directories
+                    psi.Environment["HF_HOME"] = hfCache;
+                    psi.Environment["TORCH_HOME"] = torchCache;
+                    psi.Environment["XDG_CACHE_HOME"] = cacheDir;
+
+                    psi.Environment["TEMP"] = tempDir;
+                    psi.Environment["TMP"] = tempDir;
+
+                    // Start Python
+                    var process = new Process
+                    {
+                        StartInfo = psi,
+                        EnableRaisingEvents = true
+                    };
+
+                    if (!process.Start())
+                    {
+                        SetStatus("Python process failed to start!");
+                        return;
+                    }
+
+                    _pythonProcess = process;
+
+                    _pythonStdin = process.StandardInput;
+
+                    _isPythonReady = false;
+
+                    SetStatus("Starting Python Whisper engine...");
+
+                    // Standard Output reader
+                    _ = Task.Run(async () =>
+                    {
+                        try
                         {
-                            try
+                            while (true)
                             {
-                                while (!_pythonProcess.StandardOutput.EndOfStream)
+                                string? line =
+                                    await process.StandardOutput.ReadLineAsync();
+
+                                if (line == null)
+                                    break;
+
+                                Debug.WriteLine("PYTHON: " + line);
+
+                                if (line == "AI_READY")
                                 {
-                                    string? line = _pythonProcess.StandardOutput.ReadLine();
-                                    if (!string.IsNullOrEmpty(line))
+                                    _isPythonReady = true;
+
+                                    SetStatus("Whisper Ready");
+
+                                    SetLiveText(
+                                        "NILUBRAIN AI Whisper engine ready!");
+                                }
+                                else if (line.StartsWith("AI_ERROR:"))
+                                {
+                                    _isPythonReady = false;
+
+                                    SetStatus(line);
+
+                                    SetLiveText(line);
+                                }
+                                else if (line.StartsWith("RESULT:"))
+                                {
+                                    string result = line.Substring(7).Trim();
+
+                                    lock (_transcriptionSync)
                                     {
-                                        if (line == "AI_READY" || line.Contains("AI_READY"))
-                                        {
-                                            _isPythonReady = true;
-                                            SetStatus("Ready 🎙 (Stealth Active)");
-                                            SetLiveText("Nilubrain AI hidden & ready for interview!");
-                                            break;
-                                        }
+                                        _activeTranscription?.TrySetResult(result);
                                     }
                                 }
                             }
-                            catch { }
-                        });
 
-                        Task.Run(async () =>
+                            _isPythonReady = false;
+
+                            SetStatus("Python backend disconnected.");
+                        }
+                        catch (Exception ex)
                         {
-                            await Task.Delay(4000);
-                            if (!_isPythonReady)
+                            _isPythonReady = false;
+
+                            Debug.WriteLine(
+                                "Python output error: " + ex.Message);
+                        }
+                    });
+
+                    // Standard Error reader
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            while (true)
                             {
-                                _isPythonReady = true;
-                                SetStatus("Ready 🎙 (Stealth Active)");
-                                SetLiveText("Nilubrain AI hidden & ready for interview!");
+                                string? error =
+                                    await process.StandardError.ReadLineAsync();
+
+                                if (error == null)
+                                    break;
+
+                                Debug.WriteLine(
+                                    "PYTHON ERROR: " + error);
                             }
-                        });
-                    }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine(
+                                "Python stderr error: " + ex.Message);
+                        }
+                    });
+
+                    // Monitor process exit
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await process.WaitForExitAsync();
+
+                            _isPythonReady = false;
+
+                            Debug.WriteLine(
+                                "Python exited with code: " +
+                                process.ExitCode);
+
+                            SetStatus("Python backend stopped.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine(
+                                "Python monitor error: " + ex.Message);
+                        }
+                    });
                 }
-                catch
+                catch (Exception ex)
                 {
-                    _isPythonReady = true;
-                    SetStatus("Ready 🎙");
+                    _isPythonReady = false;
+
+                    Debug.WriteLine(
+                        "Python startup error: " + ex);
+
+                    SetStatus("Python startup failed!");
+
+                    SetLiveText(ex.Message);
                 }
             });
         }
+
+
 
         private void ToggleContinuousListening()
         {
@@ -755,58 +887,80 @@ namespace NILUBRAIN.WPF.Views.InterviewAI
             }
         }
 
+
         private async Task ContinuousListenLoop(CancellationToken token)
         {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string pythonDir = Path.Combine(baseDir, "PythonBackend");
-            if (!Directory.Exists(pythonDir)) pythonDir = baseDir;
+            string audioFolder = Path.Combine(
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.LocalApplicationData),
+                "NILUBRAIN AI",
+                "Audio");
+
+            Directory.CreateDirectory(audioFolder);
 
             while (_isContinuousListening && !token.IsCancellationRequested)
             {
-                string uniqueWavPath = Path.Combine(pythonDir, $"speech_{Guid.NewGuid():N}.wav");
+                string uniqueWavPath = Path.Combine(
+                    audioFolder,
+                    $"speech_{Guid.NewGuid():N}.wav");
 
                 try
                 {
                     SetLiveText("🎙 Listening to interview question...");
-                    long recordedBytes = await RecordUntilSilenceAsync(uniqueWavPath, token);
 
-                    if (!token.IsCancellationRequested && _isContinuousListening)
+                    long recordedBytes = await RecordUntilSilenceAsync(
+                        uniqueWavPath,
+                        token);
+
+                    if (token.IsCancellationRequested ||
+                        !_isContinuousListening)
+                        break;
+
+                    if (recordedBytes > 4000 &&
+                        File.Exists(uniqueWavPath))
                     {
-                        if (recordedBytes > 4000 && File.Exists(uniqueWavPath))
+                        SetStatus("⚡ Transcribing full question...");
+
+                        string recognizedText =
+                            await RunTranscriptionAsync(uniqueWavPath);
+
+                        if (!string.IsNullOrWhiteSpace(recognizedText) &&
+                            !recognizedText.StartsWith(
+                                "Error", StringComparison.OrdinalIgnoreCase) &&
+                            !recognizedText.StartsWith(
+                                "No speech", StringComparison.OrdinalIgnoreCase) &&
+                            recognizedText.Length > 3)
                         {
-                            SetStatus("⚡ Transcribing full question...");
-                            string recognizedText = await RunTranscriptionAsync(uniqueWavPath);
+                            SetQuestionText(recognizedText);
 
-                            if (!string.IsNullOrWhiteSpace(recognizedText) &&
-                                !recognizedText.Contains("No speech") &&
-                                !recognizedText.Contains("Error") &&
-                                recognizedText.Length > 3)
-                            {
-                                SetQuestionText(recognizedText);
+                            SetStatus("⚡ Building Interview Prompt...");
 
-                                SetStatus("⚡ Building Interview Prompt...");
+                            string finalPrompt =
+                                BuildInterviewPrompt(recognizedText);
 
-                                string finalPrompt =
-                                    BuildInterviewPrompt(recognizedText);
+                            SetStatus("⚡ Streaming AI Answer...");
 
-                                SetStatus("⚡ Streaming AI Answer...");
-
-                                await StreamAiAnswerRealtimeAsync(finalPrompt);
-                            }
-                            else
-                            {
-                                SetLiveText("Listening... (Waiting for question)");
-                            }
+                            await StreamAiAnswerRealtimeAsync(finalPrompt);
                         }
                         else
                         {
-                            if (File.Exists(uniqueWavPath)) { try { File.Delete(uniqueWavPath); } catch { } }
+                            SetLiveText(
+                                "Listening... (Waiting for question)");
                         }
                     }
+                    else
+                    {
+                        SetLiveText("Listening... (No audio detected)");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
                     SetLiveText("Loop Error: " + ex.Message);
+                    Debug.WriteLine(ex.ToString());
                 }
                 finally
                 {
@@ -820,127 +974,203 @@ namespace NILUBRAIN.WPF.Views.InterviewAI
                         Debug.WriteLine("WAV cleanup error: " + ex.Message);
                     }
                 }
-                SetStatus("🔴 LIVE MEETING & INTERVIEW MODE");
-                await Task.Delay(100, token);
 
+                if (!token.IsCancellationRequested)
+                {
+                    SetStatus("🔴 LIVE MEETING & INTERVIEW MODE");
+                    await Task.Delay(100, token);
+                }
             }
-
         }
 
-        private static Task<long> RecordUntilSilenceAsync(string outputPath, CancellationToken token)
+
+
+
+        private static Task<long> RecordUntilSilenceAsync(
+            string outputPath,
+            CancellationToken token)
         {
             return Task.Run(() =>
             {
                 long totalBytesWritten = 0;
+
                 try
                 {
-                    using var waveIn = new WasapiLoopbackCapture();
-                    waveIn.WaveFormat = new WaveFormat(16000, 16, 1);
+                    Directory.CreateDirectory(
+                        Path.GetDirectoryName(outputPath)!);
 
-                    using var writer = new WaveFileWriter(outputPath, waveIn.WaveFormat);
-                    var stopEvent = new ManualResetEvent(false);
+                    using var capture = new WasapiLoopbackCapture();
 
-                    bool isSpeaking = false;
+                    // Preserve the actual device format.
+                    using var writer = new WaveFileWriter(
+                        outputPath,
+                        capture.WaveFormat);
+
+                    using var stopEvent = new ManualResetEvent(false);
+
                     int silenceCounter = 0;
-                    const int silenceThresholdLimit = 20;
-                    //const int silenceThresholdLimit = 8;
+                    bool isSpeaking = false;
 
-                    waveIn.DataAvailable += (s, e) =>
+                    const int silenceLimit = 20;
+                    const float threshold = 0.015f;
+
+                    capture.DataAvailable += (s, e) =>
                     {
-                        if (e.BytesRecorded > 0)
+                        if (e.BytesRecorded == 0)
+                            return;
+
+                        float maxAmplitude = 0;
+                        var format = capture.WaveFormat;
+
+                        if (format.Encoding == WaveFormatEncoding.IeeeFloat &&
+                            format.BitsPerSample == 32)
                         {
-                            float maxVal = 0;
-                            for (int i = 0; i < e.BytesRecorded; i += 2)
+                            for (int i = 0; i + 3 < e.BytesRecorded; i += 4)
                             {
-                                short sample = BitConverter.ToInt16(e.Buffer, i);
-                                float sampleVal = Math.Abs(sample / 32768f);
-                                if (sampleVal > maxVal) maxVal = sampleVal;
-                            }
+                                float sample = Math.Abs(
+                                    BitConverter.ToSingle(e.Buffer, i));
 
-                            if (maxVal > 0.015f)
-                            {
-                                isSpeaking = true;
-                                silenceCounter = 0;
+                                maxAmplitude = Math.Max(
+                                    maxAmplitude, sample);
                             }
-                            else if (isSpeaking)
-                            {
-                                silenceCounter++;
-                            }
-
-                            writer.Write(e.Buffer, 0, e.BytesRecorded);
-                            totalBytesWritten += e.BytesRecorded;
                         }
+                        else if (format.BitsPerSample == 16)
+                        {
+                            for (int i = 0; i + 1 < e.BytesRecorded; i += 2)
+                            {
+                                float sample = Math.Abs(
+                                    BitConverter.ToInt16(e.Buffer, i) / 32768f);
+
+                                maxAmplitude = Math.Max(
+                                    maxAmplitude, sample);
+                            }
+                        }
+
+                        if (maxAmplitude > threshold)
+                        {
+                            isSpeaking = true;
+                            Interlocked.Exchange(ref silenceCounter, 0);
+                        }
+                        else if (isSpeaking)
+                        {
+                            Interlocked.Increment(ref silenceCounter);
+                        }
+
+                        writer.Write(e.Buffer, 0, e.BytesRecorded);
+
+                        Interlocked.Add(
+                            ref totalBytesWritten,
+                            e.BytesRecorded);
                     };
 
-                    waveIn.RecordingStopped += (s, e) => stopEvent.Set();
-                    waveIn.StartRecording();
+                    capture.RecordingStopped += (s, e) =>
+                    {
+                        if (e.Exception != null)
+                            Debug.WriteLine(e.Exception);
 
-                    //int maxDurationMs = 20000;
-                    int maxDurationMs = 30000;
+                        stopEvent.Set();
+                    };
+
+                    capture.StartRecording();
+
                     int elapsed = 0;
+                    const int maxDuration = 30000;
 
-                    while (elapsed < maxDurationMs && !token.IsCancellationRequested)
+                    while (elapsed < maxDuration &&
+                           !token.IsCancellationRequested)
                     {
                         Thread.Sleep(100);
-
                         elapsed += 100;
 
-                        if (isSpeaking && silenceCounter >= silenceThresholdLimit)
-                        {
+                        if (isSpeaking &&
+                            Volatile.Read(ref silenceCounter) >= silenceLimit)
                             break;
-                        }
                     }
 
-                    waveIn.StopRecording();
-                    stopEvent.WaitOne(200);
+                    capture.StopRecording();
+
+                    stopEvent.WaitOne(3000);
+
                     writer.Flush();
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine("VAD AUDIO ERROR: " + ex.Message);
+                    Debug.WriteLine("AUDIO CAPTURE ERROR: " + ex);
+                    throw;
                 }
+
                 return totalBytesWritten;
+
             }, token);
         }
 
+
+
         private async Task<string> RunTranscriptionAsync(string wavPath)
         {
-            return await Task.Run(() =>
+            await _transcriptionSemaphore.WaitAsync();
+
+            TaskCompletionSource<string>? completion = null;
+
+            try
             {
-                try
+                if (!_isPythonReady ||
+                    _pythonProcess == null ||
+                    _pythonProcess.HasExited ||
+                    _pythonStdin == null)
                 {
-                    if (_pythonStdin == null || _pythonProcess == null || _pythonProcess.HasExited)
-                    {
-                        return "No speech detected";
-                    }
+                    return "Error: Python Whisper backend is not ready";
+                }
+
+                if (!File.Exists(wavPath))
+                    return "Error: WAV file does not exist";
+
+                completion = new TaskCompletionSource<string>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+                lock (_transcriptionSync)
+                {
+                    _activeTranscription = completion;
 
                     lock (_pythonStdin)
                     {
-                        _pythonStdin.WriteLine($"TRANSCRIBE:{wavPath}");
+                        _pythonStdin.WriteLine("TRANSCRIBE:" + wavPath);
                         _pythonStdin.Flush();
                     }
+                }
 
-                    DateTime start = DateTime.Now;
-                    while ((DateTime.Now - start).TotalSeconds < 15)
-                    {
-                        if (!_pythonProcess.StandardOutput.EndOfStream)
-                        {
-                            string? line = _pythonProcess.StandardOutput.ReadLine();
-                            if (!string.IsNullOrEmpty(line) && line.StartsWith("RESULT:"))
-                            {
-                                return line[7..].Trim();
-                            }
-                        }
-                        Thread.Sleep(50);
-                    }
-                    return "No speech detected";
-                }
-                catch (Exception ex)
+                Task completed = await Task.WhenAny(
+                    completion.Task,
+                    Task.Delay(TimeSpan.FromSeconds(60)));
+
+                if (completed != completion.Task)
                 {
-                    return "Ex: " + ex.Message;
+                    return "Error: Whisper transcription timed out";
                 }
-            });
+
+                return await completion.Task;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("TRANSCRIPTION ERROR: " + ex);
+
+                return "Error: " + ex.Message;
+            }
+            finally
+            {
+                lock (_transcriptionSync)
+                {
+                    if (completion != null &&
+                        ReferenceEquals(_activeTranscription, completion))
+                    {
+                        _activeTranscription = null;
+                    }
+                }
+
+                _transcriptionSemaphore.Release();
+            }
         }
+
 
         private void UploadResume_Click(object sender, RoutedEventArgs e)
         {
