@@ -1,112 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="15.0"
+         DefaultTargets="Build"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
 	<PropertyGroup Condition="'$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '15.0'">
 		<VisualStudioVersion>15.0</VisualStudioVersion>
 	</PropertyGroup>
 
 	<ItemGroup Label="ProjectConfigurations">
+
 		<ProjectConfiguration Include="Debug|x64">
 			<Configuration>Debug</Configuration>
 			<Platform>x64</Platform>
 		</ProjectConfiguration>
+
 		<ProjectConfiguration Include="Release|x64">
 			<Configuration>Release</Configuration>
 			<Platform>x64</Platform>
 		</ProjectConfiguration>
-		<ProjectConfiguration Include="Debug|ARM">
-			<Configuration>Debug</Configuration>
-			<Platform>ARM</Platform>
-		</ProjectConfiguration>
-		<ProjectConfiguration Include="Release|ARM">
-			<Configuration>Release</Configuration>
-			<Platform>ARM</Platform>
-		</ProjectConfiguration>
-		<ProjectConfiguration Include="Debug|ARM64">
-			<Configuration>Debug</Configuration>
-			<Platform>ARM64</Platform>
-		</ProjectConfiguration>
-		<ProjectConfiguration Include="Release|ARM64">
-			<Configuration>Release</Configuration>
-			<Platform>ARM64</Platform>
-		</ProjectConfiguration>
-		<ProjectConfiguration Include="Debug|AnyCPU">
-			<Configuration>Debug</Configuration>
-			<Platform>AnyCPU</Platform>
-		</ProjectConfiguration>
-		<ProjectConfiguration Include="Release|AnyCPU">
-			<Configuration>Release</Configuration>
-			<Platform>AnyCPU</Platform>
-		</ProjectConfiguration>
+
 	</ItemGroup>
 
+	<!-- Desktop Bridge Configuration -->
 	<PropertyGroup>
-		<WapProjPath Condition="'$(WapProjPath)'==''">$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\</WapProjPath>
+		<WapProjPath Condition="'$(WapProjPath)' == ''">$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\</WapProjPath>
 	</PropertyGroup>
 
 	<Import Project="$(WapProjPath)\Microsoft.DesktopBridge.props" />
 
+	<!-- Main Package Properties -->
 	<PropertyGroup>
+
 		<ProjectGuid>bf88afc6-f4a3-456f-b34f-6ad673dbb34b</ProjectGuid>
+
 		<TargetPlatformVersion>10.0.26100.0</TargetPlatformVersion>
 		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+
 		<DefaultLanguage>en-US</DefaultLanguage>
+
 		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-		<NoWarn>$(NoWarn);NU1702</NoWarn>
+
 		<EntryPointProjectUniqueName>..\NILUBRAIN.WPF\NILUBRAIN.WPF.csproj</EntryPointProjectUniqueName>
-		<GenerateAppInstallerFile>True</GenerateAppInstallerFile>
+
+		<GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+
 		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+
 		<AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
+
 		<GenerateTestArtifacts>True</GenerateTestArtifacts>
+
+		<AppxBundle>Never</AppxBundle>
+
 		<AppxBundlePlatforms>x64</AppxBundlePlatforms>
+
 		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
-		<PackageCertificateThumbprint>C7B66D942723AE1D6D3B5B7F05E82CBE11E151C6</PackageCertificateThumbprint>
-		<AppInstallerUri>C:\Users\NILESH\OneDrive\Desktop\NILUBRAIN_AI_App\NILUBRAIN.Package\AppPackages\</AppInstallerUri>
+
+		<AppxPackageDir>$(MSBuildProjectDirectory)\AppPackages\</AppxPackageDir>
+
+		<NoWarn>$(NoWarn);NU1702</NoWarn>
+
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+	<!-- Release x64 -->
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
 		<AppxBundle>Never</AppxBundle>
+		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
 	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-		<AppxBundle>Never</AppxBundle>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-		<AppxBundle>Never</AppxBundle>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-		<AppxBundle>Never</AppxBundle>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<AppxBundle>Never</AppxBundle>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-		<AppxBundle>Never</AppxBundle>
-	</PropertyGroup>
+
+	<!-- Debug x64 -->
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
 		<AppxBundle>Never</AppxBundle>
 	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-		<AppxBundle>Never</AppxBundle>
-	</PropertyGroup>
 
+	<!-- Package Manifest -->
 	<ItemGroup>
 		<AppxManifest Include="Package.appxmanifest">
 			<SubType>Designer</SubType>
 		</AppxManifest>
 	</ItemGroup>
 
+	<!-- Application Images and Resources -->
 	<ItemGroup>
+
 		<PRIResource Include="Images\back-image.jpg" />
 		<PRIResource Include="Images\key-icon.png" />
+
+		<PRIResource Include="Images\pg.ico" />
+		<PRIResource Include="Images\pg.png" />
+
+		<PRIResource Include="Images\user-icon.png" />
 
 		<Content Include="Images\LargeTile.scale-100.png" />
 		<Content Include="Images\LargeTile.scale-125.png" />
 		<Content Include="Images\LargeTile.scale-150.png" />
 		<Content Include="Images\LargeTile.scale-200.png" />
 		<Content Include="Images\LargeTile.scale-400.png" />
-
-		<PRIResource Include="Images\pg.ico" />
-		<PRIResource Include="Images\pg.png" />
 
 		<Content Include="Images\SmallTile.scale-100.png" />
 		<Content Include="Images\SmallTile.scale-125.png" />
@@ -158,8 +147,6 @@
 		<Content Include="Images\StoreLogo.scale-200.png" />
 		<Content Include="Images\StoreLogo.scale-400.png" />
 
-		<PRIResource Include="Images\user-icon.png" />
-
 		<Content Include="Images\Wide310x150Logo.scale-100.png" />
 		<Content Include="Images\Wide310x150Logo.scale-125.png" />
 		<Content Include="Images\Wide310x150Logo.scale-150.png" />
@@ -167,16 +154,21 @@
 		<Content Include="Images\Wide310x150Logo.scale-400.png" />
 
 		<None Include="NILUBRAIN.Package_TemporaryKey.pfx" />
+
 	</ItemGroup>
 
-	<Import Project="$(WapProjPath)\Microsoft.DesktopBridge.targets" />
-
+	<!-- Windows SDK Build Tools -->
 	<ItemGroup>
-		<PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.Windows.SDK.BuildTools"
+						  Version="10.0.26100.1742"
+						  PrivateAssets="all" />
 	</ItemGroup>
 
+	<!-- WPF Application Project -->
 	<ItemGroup>
 		<ProjectReference Include="..\NILUBRAIN.WPF\NILUBRAIN.WPF.csproj" />
 	</ItemGroup>
+
+	<Import Project="$(WapProjPath)\Microsoft.DesktopBridge.targets" />
 
 </Project>
